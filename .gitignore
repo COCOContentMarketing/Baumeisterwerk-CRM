@@ -11,3 +11,5 @@ build/
 .turbo
 next-env.d.ts
 .supabase/
+tsconfig.tsbuildinfo
+*.tsbuildinfo
