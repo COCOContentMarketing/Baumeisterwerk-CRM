@@ -1,0 +1,114 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { PageHeader } from "@/components/PageHeader";
+import { StatusBadge } from "@/components/StatusBadge";
+import { PriorityBadge } from "@/components/PriorityBadge";
+import { Timeline } from "@/components/Timeline";
+import { ChatComposer } from "@/components/ChatComposer";
+import {
+  getCompany,
+  listContactsForCompany,
+  listInteractionsForCompany,
+} from "@/lib/db/queries";
+import { COMPANY_TYPE_LABELS } from "@/types/db";
+
+export const dynamic = "force-dynamic";
+
+export default async function CompanyDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const company = await getCompany(id);
+  if (!company) notFound();
+
+  const [contacts, interactions] = await Promise.all([
+    listContactsForCompany(id),
+    listInteractionsForCompany(id),
+  ]);
+
+  return (
+    <div>
+      <PageHeader
+        title={company.name}
+        subtitle={`${COMPANY_TYPE_LABELS[company.type]}${company.city ? ` · ${company.city}` : ""}`}
+        actions={
+          <div className="flex items-center gap-2">
+            <StatusBadge status={company.status} />
+            <PriorityBadge priority={company.priority} />
+            <Link href={`/companies/${id}/edit`} className="btn-secondary">Bearbeiten</Link>
+          </div>
+        }
+      />
+
+      <div className="grid grid-cols-3 gap-6">
+        <div className="col-span-2 space-y-6">
+          <section className="card p-6">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-brand-900">Kommunikation</h2>
+            </div>
+            <Timeline interactions={interactions} contacts={contacts} />
+            <ChatComposer companyId={company.id} contacts={contacts} />
+          </section>
+        </div>
+
+        <aside className="space-y-6">
+          <section className="card p-6">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-brand-900">Kontaktpersonen</h2>
+              <Link
+                href={`/companies/${id}/contacts/new`}
+                className="text-xs font-medium text-brand-700 hover:underline"
+              >
+                + Hinzufügen
+              </Link>
+            </div>
+            {contacts.length === 0 ? (
+              <p className="text-xs text-brand-500">Noch keine Kontaktpersonen.</p>
+            ) : (
+              <ul className="space-y-3">
+                {contacts.map((c) => (
+                  <li key={c.id}>
+                    <Link href={`/contacts/${c.id}`} className="block hover:underline">
+                      <div className="text-sm font-medium text-brand-900">
+                        {c.full_name || c.email || "(unbenannt)"}
+                        {c.is_primary && <span className="ml-2 chip bg-brand-100 text-brand-700">Primär</span>}
+                      </div>
+                      {c.role && <div className="text-xs text-brand-500">{c.role}</div>}
+                      {c.email && <div className="text-xs text-brand-500">{c.email}</div>}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="card p-6">
+            <h2 className="mb-3 text-sm font-semibold text-brand-900">Details</h2>
+            <dl className="space-y-2 text-xs">
+              {company.website && (
+                <Detail label="Website">
+                  <a href={company.website} target="_blank" className="text-brand-700 hover:underline">
+                    {company.website}
+                  </a>
+                </Detail>
+              )}
+              {company.address && <Detail label="Adresse">{company.address}</Detail>}
+              {company.notes && (
+                <Detail label="Notizen">
+                  <span className="whitespace-pre-wrap">{company.notes}</span>
+                </Detail>
+              )}
+            </dl>
+          </section>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+function Detail({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="text-brand-500">{label}</dt>
+      <dd className="text-brand-900">{children}</dd>
+    </div>
+  );
+}
