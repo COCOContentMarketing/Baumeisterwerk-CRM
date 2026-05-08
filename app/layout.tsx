@@ -1,44 +1,31 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Link from "next/link";
+import { AppShell } from "@/components/AppShell";
+import { getSupabaseServer } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Baumeisterwerk CRM",
   description: "Beziehungsmanagement für Baumeisterwerk",
 };
 
-const navItems = [
-  { href: "/", label: "Dashboard" },
-  { href: "/companies", label: "Unternehmen" },
-  { href: "/contacts", label: "Kontakte" },
-  { href: "/recommendations", label: "Empfehlungen" },
-  { href: "/settings", label: "Einstellungen" },
-];
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Wird von der Middleware bereits validiert; hier nur, um die Email
+  // im Header anzeigen zu koennen. Auf Login-/Auth-Routen ist user=null.
+  let email: string | null = null;
+  try {
+    const sb = await getSupabaseServer();
+    const {
+      data: { user },
+    } = await sb.auth.getUser();
+    email = user?.email ?? null;
+  } catch {
+    email = null;
+  }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="de">
       <body className="min-h-screen font-sans">
-        <div className="flex min-h-screen">
-          <aside className="w-60 shrink-0 border-r border-brand-100 bg-white px-4 py-6">
-            <Link href="/" className="mb-8 block">
-              <div className="text-lg font-semibold text-brand-900">Baumeisterwerk</div>
-              <div className="text-xs text-brand-500">CRM</div>
-            </Link>
-            <nav className="space-y-1">
-              {navItems.map((it) => (
-                <Link
-                  key={it.href}
-                  href={it.href}
-                  className="block rounded-md px-3 py-2 text-sm text-brand-900 hover:bg-brand-100"
-                >
-                  {it.label}
-                </Link>
-              ))}
-            </nav>
-          </aside>
-          <main className="flex-1 px-8 py-6">{children}</main>
-        </div>
+        {email ? <AppShell email={email}>{children}</AppShell> : children}
       </body>
     </html>
   );
