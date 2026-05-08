@@ -100,9 +100,11 @@ Sprache: ${language === "de" ? "Deutsch" : "English"}
 
 ${templateBlock}
 
-Antworte AUSSCHLIESSLICH als JSON-Objekt mit den Feldern "subject" (string) und "body" (string, mit \\n fuer Zeilenumbrueche). Keine Platzhalter wie {{anrede}} oder {{persoenlicher_hook}} stehen lassen - die musst du auf Basis der Kontextdaten konkret ausfuellen. Keine Markdown-Formatierung, kein Text drumherum.${
+Personalisiere konkret auf Basis der Kontextdaten. Keine Platzhalter wie {{anrede}} oder {{persoenlicher_hook}} stehen lassen.${
     args.signature ? `\n\nBeende den Body mit folgender Signatur:\n${args.signature}` : ""
-  }`;
+  }
+
+Gib das Ergebnis ueber das Tool "submit_email" zurueck. Im Body echte Zeilenumbrueche, keine Markdown-Formatierung.`;
 
   const res = await claude.messages.create({
     model: CLAUDE_MODEL,
@@ -114,6 +116,25 @@ Antworte AUSSCHLIESSLICH als JSON-Objekt mit den Feldern "subject" (string) und 
         cache_control: { type: "ephemeral" },
       },
     ],
+    tools: [
+      {
+        name: "submit_email",
+        description: "Liefert den fertigen Email-Entwurf als strukturiertes Objekt.",
+        input_schema: {
+          type: "object",
+          properties: {
+            subject: { type: "string", description: "Betreffzeile der Email." },
+            body: {
+              type: "string",
+              description:
+                "Vollstaendiger Email-Body mit Anrede, Inhalt, Gruss und (falls vorgegeben) Signatur. Echte Zeilenumbrueche.",
+            },
+          },
+          required: ["subject", "body"],
+        },
+      },
+    ],
+    tool_choice: { type: "tool", name: "submit_email" },
     messages: [
       {
         role: "user",
@@ -125,11 +146,7 @@ Antworte AUSSCHLIESSLICH als JSON-Objekt mit den Feldern "subject" (string) und 
     ],
   });
 
-  const text = res.content
-    .map((b) => (b.type === "text" ? b.text : ""))
-    .join("")
-    .trim();
-  return parseJsonObject<DraftedEmail>(text, ["subject", "body"]);
+  return extractToolInput<DraftedEmail>(res, "submit_email", ["subject", "body"]);
 }
 
 export async function callBriefing(args: {
@@ -139,14 +156,7 @@ export async function callBriefing(args: {
   hint?: string;
 }): Promise<CallBriefing> {
   const claude = getClaude();
-  const userInstruction = `Erstelle ein Telefonat-Briefing fuer ein Gespraech mit dem Ansprechpartner.
-Antworte AUSSCHLIESSLICH als JSON-Objekt mit:
-{
-  "goal": string,
-  "talking_points": string[3],
-  "questions": string[3],
-  "objections": [{ "objection": string, "response": string }]
-}`;
+  const userInstruction = `Erstelle ein Telefonat-Briefing fuer ein Gespraech mit dem Ansprechpartner. Gib das Ergebnis ueber das Tool "submit_briefing" zurueck.`;
 
   const res = await claude.messages.create({
     model: CLAUDE_MODEL,
@@ -158,6 +168,42 @@ Antworte AUSSCHLIESSLICH als JSON-Objekt mit:
         cache_control: { type: "ephemeral" },
       },
     ],
+    tools: [
+      {
+        name: "submit_briefing",
+        description: "Liefert das Telefonat-Briefing als strukturiertes Objekt.",
+        input_schema: {
+          type: "object",
+          properties: {
+            goal: { type: "string", description: "Ziel des Gespraechs in einem Satz." },
+            talking_points: {
+              type: "array",
+              items: { type: "string" },
+              description: "Drei Kernbotschaften.",
+            },
+            questions: {
+              type: "array",
+              items: { type: "string" },
+              description: "Drei offene Fragen.",
+            },
+            objections: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  objection: { type: "string" },
+                  response: { type: "string" },
+                },
+                required: ["objection", "response"],
+              },
+              description: "Wahrscheinliche Einwaende mit Antwort.",
+            },
+          },
+          required: ["goal", "talking_points", "questions", "objections"],
+        },
+      },
+    ],
+    tool_choice: { type: "tool", name: "submit_briefing" },
     messages: [
       {
         role: "user",
@@ -169,19 +215,25 @@ Antworte AUSSCHLIESSLICH als JSON-Objekt mit:
     ],
   });
 
-  const text = res.content
-    .map((b) => (b.type === "text" ? b.text : ""))
-    .join("")
-    .trim();
-  return parseJsonObject<CallBriefing>(text, ["goal", "talking_points", "questions"]);
+  return extractToolInput<CallBriefing>(res, "submit_briefing", [
+    "goal",
+    "talking_points",
+    "questions",
+  ]);
 }
 
-function parseJsonObject<T>(text: string, requiredKeys: string[]): T {
-  const cleaned = text.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start === -1 || end === -1) throw new Error("Claude-Antwort ist kein JSON: " + text.slice(0, 200));
-  const obj = JSON.parse(cleaned.slice(start, end + 1));
+function extractToolInput<T>(
+  res: { content: Array<{ type: string; name?: string; input?: unknown }> },
+  toolName: string,
+  requiredKeys: string[],
+): T {
+  const block = res.content.find(
+    (b) => b.type === "tool_use" && b.name === toolName,
+  );
+  if (!block || typeof block.input !== "object" || block.input === null) {
+    throw new Error(`Claude hat kein "${toolName}"-Tool zurueckgegeben.`);
+  }
+  const obj = block.input as Record<string, unknown>;
   for (const k of requiredKeys) {
     if (!(k in obj)) throw new Error(`Feld "${k}" fehlt in Claude-Antwort`);
   }

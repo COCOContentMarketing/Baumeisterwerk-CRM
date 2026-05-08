@@ -13,13 +13,14 @@ export function EmailComposer({
   onClose,
 }: {
   contactId: string;
-  contactEmail: string;
+  contactEmail: string | null;
   contactName: string | null;
   initialSubject?: string;
   initialBody?: string;
   recommendationId?: string;
   onClose?: () => void;
 }) {
+  const hasEmail = !!contactEmail;
   const [subject, setSubject] = useState(initialSubject);
   const [body, setBody] = useState(initialBody);
   const [hint, setHint] = useState("");
@@ -77,8 +78,25 @@ export function EmailComposer({
   return (
     <div className="card space-y-3 p-6">
       <div className="text-sm text-brand-500">
-        An: <span className="text-brand-900">{contactName ? `${contactName} <${contactEmail}>` : contactEmail}</span>
+        An:{" "}
+        {hasEmail ? (
+          <span className="text-brand-900">
+            {contactName ? `${contactName} <${contactEmail}>` : contactEmail}
+          </span>
+        ) : (
+          <span className="text-brand-900">{contactName ?? "(unbenannt)"}</span>
+        )}
       </div>
+      {!hasEmail && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          Für diesen Kontakt ist noch keine Email-Adresse hinterlegt. Du kannst trotzdem
+          einen Entwurf generieren – zum Speichern als Gmail-Entwurf bitte zuerst die{" "}
+          <a href={`/contacts/${contactId}`} className="font-medium underline">
+            Email-Adresse beim Kontakt
+          </a>{" "}
+          eintragen.
+        </div>
+      )}
 
       <div>
         <label className="label">Hinweis für KI (optional)</label>
@@ -125,8 +143,9 @@ export function EmailComposer({
           )}
           <button
             onClick={sendToGmail}
-            disabled={sending || !subject.trim() || !body.trim()}
+            disabled={sending || !hasEmail || !subject.trim() || !body.trim()}
             className="btn-primary"
+            title={!hasEmail ? "Empfänger-Email beim Kontakt fehlt" : undefined}
           >
             {sending ? "Lege an…" : "→ Als Gmail-Entwurf speichern"}
           </button>

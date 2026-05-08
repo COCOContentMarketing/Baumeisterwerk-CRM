@@ -16,8 +16,6 @@ export async function POST(req: NextRequest) {
     const parsed = Body.parse(json);
     const contact = await getContact(parsed.contact_id);
     if (!contact) return NextResponse.json({ error: "Kontakt nicht gefunden" }, { status: 404 });
-    if (!contact.email)
-      return NextResponse.json({ error: "Kontakt hat keine Email-Adresse" }, { status: 400 });
     const [interactions, user] = await Promise.all([
       listInteractionsForContact(parsed.contact_id),
       getCurrentUser(),

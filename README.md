@@ -25,6 +25,7 @@ Claude individuelle Email-Entwürfe direkt in Gmail anlegen.
   - Inbound unbeantwortet > 4 h → höchste Priorität
 - 📨 **Tägliche Digest-Email** an `mb@baumeisterwerk.de` um 08:00 Berlin-Zeit (im Sommer; im Winter 07:00) mit allen Aktionen für heute
 - 🌱 Vorbefüllt mit **40+ Maklern und Relocation Services** aus der Recherche, sortiert nach Priorität, plus Anschreiben-Template
+- 🔐 **Email-/Passwort-Login** über Supabase Auth (Single-User; Sign-up im CRM deaktiviert, User wird im Supabase-Dashboard angelegt)
 
 ## Setup
 
@@ -41,7 +42,21 @@ npm install
   1. `supabase/migrations/0001_init.sql` — Schema
   2. `supabase/migrations/0002_templates_and_digest.sql` — Email-Templates + Digest-Spalten
   3. `supabase/migrations/0003_seed_makler.sql` — Seed: 40+ Makler/Relocation + Anschreiben-Template
+  4. `supabase/migrations/0004_fix_seed_umlauts.sql` — Repair: ASCII-Ersatzformen → echte Umlaute
+  5. `supabase/migrations/0005_link_app_user_to_auth.sql` — Auth-Verknüpfung
 - **Settings → API**: `Project URL` (Form: `https://xxx.supabase.co` — **kein** `/rest/v1`!), `anon public key` und `service_role key` notieren.
+
+### 2b. Login-User in Supabase anlegen
+
+Sign-up ist im CRM bewusst deaktiviert (Single-User). Den Login-User legst du im Supabase-Dashboard an:
+
+1. Authentication → Users → **Add user** → „Create new user"
+2. Email: `mb@baumeisterwerk.de`
+3. Passwort vergeben
+4. Häkchen **„Auto Confirm User"** setzen (sonst bleibt der Account nicht-bestätigt)
+5. Speichern
+
+Nach dem Anlegen Migration 0005 ausführen — sie verknüpft den `app_user`-Eintrag mit dem `auth.users`-Eintrag per Email-Match.
 
 ### 3. Google OAuth (Gmail) einrichten
 
