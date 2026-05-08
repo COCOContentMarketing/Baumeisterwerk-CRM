@@ -1,7 +1,11 @@
 import { google } from "googleapis";
 
 export const GMAIL_SCOPES = [
+  // Drafts erstellen (Compose-Workflow)
   "https://www.googleapis.com/auth/gmail.compose",
+  // Senden (Daily-Digest verschickt automatisch)
+  "https://www.googleapis.com/auth/gmail.send",
+  // Account-Email lesen
   "https://www.googleapis.com/auth/userinfo.email",
 ];
 

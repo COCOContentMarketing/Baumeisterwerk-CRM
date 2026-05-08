@@ -1,5 +1,6 @@
 import { CLAUDE_MODEL, getClaude } from "./client";
 import { BAUMEISTERWERK_BACKGROUND } from "./prompts";
+import { findTemplate, findTemplateByName } from "@/lib/db/templates";
 import type { Company, Contact, Interaction } from "@/types/db";
 import { COMPANY_TYPE_LABELS } from "@/types/db";
 
@@ -63,13 +64,44 @@ export async function draftEmail(args: {
   interactions: Interaction[];
   signature?: string | null;
   hint?: string;
+  // Use-Case bestimmt, welche Template-Vorlage als Basis dient.
+  // z.B. "erstkontakt", "follow_up_1", "inbound_reply", "post_meeting_thanks"
+  useCase?: string;
+  // Optional: explizit ein bestimmtes Template per Name waehlen.
+  templateName?: string;
 }): Promise<DraftedEmail> {
   const claude = getClaude();
   const language = args.contact.language;
-  const userInstruction = `Verfasse eine Email an den Ansprechpartner. Sprache: ${
-    language === "de" ? "Deutsch" : "English"
-  }. Antworte AUSSCHLIESSLICH als JSON-Objekt mit den Feldern "subject" (string) und "body" (string, mit \\n fuer Zeilenumbrueche). Keine Markdown-Formatierung, kein Text drumherum.${
-    args.signature ? ` Beende den Body mit folgender Signatur:\n${args.signature}` : ""
+
+  // Template aus DB laden: erst via Name, sonst via Use-Case + Company-Type.
+  const template = args.templateName
+    ? await findTemplateByName(args.templateName)
+    : args.useCase
+      ? await findTemplate({
+          useCase: args.useCase,
+          companyType: args.company.type,
+          language,
+        })
+      : null;
+
+  const templateBlock = template
+    ? [
+        "VORLAGE (Basis - bitte konkret personalisieren, nicht 1:1 uebernehmen):",
+        `Betreff-Vorlage: ${template.subject_template ?? "(frei waehlen)"}`,
+        "Body-Vorlage:",
+        template.body_template,
+        template.ai_guidance ? `\nWichtige Hinweise zur Anwendung:\n${template.ai_guidance}` : "",
+      ].join("\n")
+    : "Keine spezifische Vorlage hinterlegt - frei verfassen entlang der Tonalitaet im System-Prompt.";
+
+  const userInstruction = `Verfasse eine Email an den Ansprechpartner.
+
+Sprache: ${language === "de" ? "Deutsch" : "English"}
+
+${templateBlock}
+
+Antworte AUSSCHLIESSLICH als JSON-Objekt mit den Feldern "subject" (string) und "body" (string, mit \\n fuer Zeilenumbrueche). Keine Platzhalter wie {{anrede}} oder {{persoenlicher_hook}} stehen lassen - die musst du auf Basis der Kontextdaten konkret ausfuellen. Keine Markdown-Formatierung, kein Text drumherum.${
+    args.signature ? `\n\nBeende den Body mit folgender Signatur:\n${args.signature}` : ""
   }`;
 
   const res = await claude.messages.create({

@@ -149,6 +149,10 @@ export interface AppUser {
   signature: string | null;
   gmail_refresh_token: string | null;
   gmail_account_email: string | null;
+  digest_email: string | null;
+  digest_enabled: boolean;
+  digest_last_sent_at: string | null;
+  digest_timezone: string;
   created_at: string;
   updated_at: string;
 }
