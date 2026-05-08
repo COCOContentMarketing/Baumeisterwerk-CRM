@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { DragonIcon } from "./DragonIcon";
+import Image from "next/image";
 
 const navItems = [
   { href: "/", label: "Dashboard" },
@@ -20,7 +20,13 @@ export function AppShell({
     <div className="flex min-h-screen">
       <aside className="w-60 shrink-0 border-r border-brand-100 bg-white px-4 py-6">
         <Link href="/" className="mb-8 flex items-center gap-3">
-          <DragonIcon className="h-8 w-8 shrink-0 text-brand-900" />
+          <Image
+            src="/dragon.png"
+            alt="Baumeisterwerk"
+            width={32}
+            height={32}
+            className="shrink-0"
+          />
           <div>
             <div className="text-lg font-semibold leading-tight text-brand-900">
               Baumeisterwerk
