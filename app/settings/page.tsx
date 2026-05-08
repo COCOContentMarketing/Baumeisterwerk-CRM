@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { getCurrentUser } from "@/lib/db/queries";
-import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { disconnectGmail } from "@/lib/gmail/drafts";
 
 export const dynamic = "force-dynamic";
@@ -9,11 +9,12 @@ export const dynamic = "force-dynamic";
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ gmail?: string }>;
+  searchParams: Promise<{ gmail?: string; detail?: string }>;
 }) {
   const user = await getCurrentUser();
   const params = await searchParams;
   const gmailFlash = params.gmail;
+  const gmailDetail = params.detail;
 
   async function saveProfile(formData: FormData) {
     "use server";
@@ -60,6 +61,17 @@ export default async function SettingsPage({
       {gmailFlash === "error" && (
         <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm">
           Fehler bei der Gmail-Verbindung.
+          {gmailDetail && (
+            <>
+              {" "}
+              <span className="font-mono text-xs">{decodeURIComponent(gmailDetail)}</span>
+            </>
+          )}
+          <div className="mt-1 text-xs text-brand-700">
+            Pruefe, dass <code>GOOGLE_REDIRECT_URI</code> in den Vercel-Env-Vars exakt der bei
+            Google Cloud Console eingetragenen Redirect-URI entspricht (inkl. https vs http und
+            ohne Trailing-Slash).
+          </div>
         </div>
       )}
 

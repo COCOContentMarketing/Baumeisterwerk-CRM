@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createGmailDraft } from "@/lib/gmail/drafts";
 import { getContact } from "@/lib/db/queries";
-import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 const Body = z.object({
   contact_id: z.string().uuid(),

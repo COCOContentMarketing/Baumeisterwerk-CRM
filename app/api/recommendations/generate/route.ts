@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { listAllContacts, listCompanies } from "@/lib/db/queries";
 import { generateRecommendations } from "@/lib/claude/recommendations";
-import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { CLAUDE_MODEL } from "@/lib/claude/client";
 
 export async function POST() {

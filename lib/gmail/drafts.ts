@@ -1,7 +1,7 @@
 import { google } from "googleapis";
 import { getOAuthClient } from "./oauth";
 import { getCurrentUser } from "@/lib/db/queries";
-import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export interface DraftInput {
   to: string;
