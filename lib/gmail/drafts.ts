@@ -2,6 +2,7 @@ import { google } from "googleapis";
 import { getOAuthClient } from "./oauth";
 import { getCurrentUser } from "@/lib/db/queries";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { buildMimeMessage, toBase64Url } from "./mime";
 
 export interface DraftInput {
   to: string;
@@ -10,37 +11,6 @@ export interface DraftInput {
   body: string;
   fromName?: string;
   fromEmail?: string;
-}
-
-function encodeBase64Url(input: string) {
-  return Buffer.from(input, "utf-8")
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
-function buildRfc2822({
-  to,
-  toName,
-  subject,
-  body,
-  fromName,
-  fromEmail,
-}: DraftInput): string {
-  const fromHeader = fromEmail ? `${fromName ? `"${fromName}" ` : ""}<${fromEmail}>` : "";
-  const toHeader = toName ? `"${toName}" <${to}>` : to;
-  const lines = [
-    `To: ${toHeader}`,
-    fromHeader ? `From: ${fromHeader}` : "",
-    `Subject: ${subject}`,
-    'MIME-Version: 1.0',
-    'Content-Type: text/plain; charset="UTF-8"',
-    'Content-Transfer-Encoding: 7bit',
-    "",
-    body,
-  ].filter(Boolean);
-  return lines.join("\r\n");
 }
 
 export async function createGmailDraft(input: DraftInput): Promise<{
@@ -52,17 +22,21 @@ export async function createGmailDraft(input: DraftInput): Promise<{
   if (!user?.gmail_refresh_token) {
     throw new Error("Gmail ist noch nicht verbunden. Bitte zuerst unter Einstellungen verbinden.");
   }
+  const fromName = input.fromName ?? process.env.USER_FROM_NAME ?? "Baumeisterwerk";
+  const fromEmail =
+    input.fromEmail ?? user.gmail_account_email ?? process.env.USER_FROM_EMAIL ?? user.email;
+
   const auth = getOAuthClient();
   auth.setCredentials({ refresh_token: user.gmail_refresh_token });
-
   const gmail = google.gmail({ version: "v1", auth });
-  const raw = encodeBase64Url(
-    buildRfc2822({
-      ...input,
-      fromName: input.fromName ?? process.env.USER_FROM_NAME,
-      fromEmail: input.fromEmail ?? user.gmail_account_email ?? process.env.USER_FROM_EMAIL,
-    }),
-  );
+
+  const rfc822 = buildMimeMessage({
+    from: { email: fromEmail, name: fromName },
+    to: { email: input.to, name: input.toName },
+    subject: input.subject,
+    bodyText: input.body,
+  });
+  const raw = toBase64Url(rfc822);
 
   const res = await gmail.users.drafts.create({
     userId: "me",
