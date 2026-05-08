@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
+import { DbErrorBanner } from "@/components/DbErrorBanner";
 import { getCurrentUser } from "@/lib/db/queries";
+import { safeRun } from "@/lib/db/safe";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { disconnectGmail } from "@/lib/gmail/drafts";
 
@@ -11,7 +13,8 @@ export default async function SettingsPage({
 }: {
   searchParams: Promise<{ gmail?: string; detail?: string }>;
 }) {
-  const user = await getCurrentUser();
+  const userRes = await safeRun("getCurrentUser", getCurrentUser);
+  const user = userRes.ok ? userRes.data : null;
   const params = await searchParams;
   const gmailFlash = params.gmail;
   const gmailDetail = params.detail;
@@ -39,6 +42,8 @@ export default async function SettingsPage({
   return (
     <div className="max-w-3xl">
       <PageHeader title="Einstellungen" />
+
+      {!userRes.ok && <DbErrorBanner area="Profil" message={userRes.error} />}
 
       {gmailFlash === "connected" && (
         <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm">

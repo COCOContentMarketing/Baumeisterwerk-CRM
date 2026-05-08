@@ -1,26 +1,30 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/PageHeader";
 import { PriorityBadge } from "@/components/PriorityBadge";
+import { DbErrorBanner } from "@/components/DbErrorBanner";
 import { GenerateRecommendationsButton } from "../_components/GenerateRecommendationsButton";
 import { listOpenRecommendations } from "@/lib/db/queries";
+import { safeRun } from "@/lib/db/safe";
 import { formatRelative } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
 export default async function RecommendationsPage() {
-  const recs = await listOpenRecommendations();
+  const res = await safeRun("listOpenRecommendations", listOpenRecommendations);
+  const recs = res.ok ? res.data : [];
   return (
     <div>
       <PageHeader
         title="Empfehlungen"
-        subtitle={`${recs.length} offene Vorschläge`}
+        subtitle={res.ok ? `${recs.length} offene Vorschläge` : undefined}
         actions={<GenerateRecommendationsButton />}
       />
-      {recs.length === 0 ? (
+      {!res.ok && <DbErrorBanner area="Empfehlungen" message={res.error} />}
+      {res.ok && recs.length === 0 ? (
         <div className="card p-8 text-center text-sm text-brand-500">
-          Keine offenen Empfehlungen. Klicke auf „Empfehlungen generieren".
+          Keine offenen Empfehlungen. Klicke auf Empfehlungen generieren.
         </div>
-      ) : (
+      ) : recs.length > 0 ? (
         <div className="space-y-3">
           {recs.map((r) => (
             <Link
@@ -47,7 +51,7 @@ export default async function RecommendationsPage() {
             </Link>
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

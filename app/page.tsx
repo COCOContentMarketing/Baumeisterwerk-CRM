@@ -1,39 +1,19 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/PageHeader";
 import { PriorityBadge } from "@/components/PriorityBadge";
-import {
-  listCompanies,
-  listOpenRecommendations,
-  type RecommendationWithRefs,
-} from "@/lib/db/queries";
-import type { Company } from "@/types/db";
+import { DbErrorBanner } from "@/components/DbErrorBanner";
+import { listCompanies, listOpenRecommendations } from "@/lib/db/queries";
+import { safeRun } from "@/lib/db/safe";
 import { formatRelative } from "@/lib/format";
 import { GenerateRecommendationsButton } from "./_components/GenerateRecommendationsButton";
 
 export const dynamic = "force-dynamic";
 
-async function safeListCompanies(): Promise<{ ok: true; data: Company[] } | { ok: false; error: string }> {
-  try {
-    return { ok: true, data: await listCompanies() };
-  } catch (e) {
-    console.error("listCompanies fehlgeschlagen:", e);
-    return { ok: false, error: e instanceof Error ? e.message : "Unbekannter Fehler" };
-  }
-}
-
-async function safeListRecs(): Promise<
-  { ok: true; data: RecommendationWithRefs[] } | { ok: false; error: string }
-> {
-  try {
-    return { ok: true, data: await listOpenRecommendations() };
-  } catch (e) {
-    console.error("listOpenRecommendations fehlgeschlagen:", e);
-    return { ok: false, error: e instanceof Error ? e.message : "Unbekannter Fehler" };
-  }
-}
-
 export default async function DashboardPage() {
-  const [recsRes, companiesRes] = await Promise.all([safeListRecs(), safeListCompanies()]);
+  const [recsRes, companiesRes] = await Promise.all([
+    safeRun("listOpenRecommendations", listOpenRecommendations),
+    safeRun("listCompanies", listCompanies),
+  ]);
   const companies = companiesRes.ok ? companiesRes.data : [];
   const recs = recsRes.ok ? recsRes.data : [];
 
@@ -105,23 +85,6 @@ function Stat({ label, value }: { label: string; value: number }) {
     <div className="card p-4">
       <div className="text-xs uppercase tracking-wide text-brand-500">{label}</div>
       <div className="mt-1 text-2xl font-semibold text-brand-900">{value}</div>
-    </div>
-  );
-}
-
-function DbErrorBanner({ area, message }: { area: string; message: string }) {
-  return (
-    <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 p-3 text-sm">
-      <div className="font-medium text-rose-900">{area} konnten nicht geladen werden.</div>
-      <div className="mt-1 font-mono text-xs text-rose-700">{message}</div>
-      <div className="mt-1 text-xs text-rose-700">
-        Pruefe in den Vercel-Logs den vollstaendigen Fehler. Haeufige Ursachen: Tabellen aus
-        <code className="mx-1">supabase/migrations/0001_init.sql</code>
-        wurden noch nicht eingespielt, oder
-        <code className="mx-1">SUPABASE_SERVICE_ROLE_KEY</code>
-        zeigt auf ein anderes Projekt als
-        <code className="mx-1">NEXT_PUBLIC_SUPABASE_URL</code>.
-      </div>
     </div>
   );
 }

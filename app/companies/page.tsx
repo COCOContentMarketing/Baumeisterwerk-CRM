@@ -2,30 +2,34 @@ import Link from "next/link";
 import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PriorityBadge } from "@/components/PriorityBadge";
+import { DbErrorBanner } from "@/components/DbErrorBanner";
 import { listCompanies } from "@/lib/db/queries";
+import { safeRun } from "@/lib/db/safe";
 import { COMPANY_TYPE_LABELS } from "@/types/db";
 import { formatRelative } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
 export default async function CompaniesPage() {
-  const companies = await listCompanies();
+  const res = await safeRun("listCompanies", listCompanies);
+  const companies = res.ok ? res.data : [];
   return (
     <div>
       <PageHeader
         title="Unternehmen"
-        subtitle={`${companies.length} Einträge`}
+        subtitle={res.ok ? `${companies.length} Einträge` : undefined}
         actions={
           <Link href="/companies/new" className="btn-primary">
             + Neues Unternehmen
           </Link>
         }
       />
-      {companies.length === 0 ? (
+      {!res.ok && <DbErrorBanner area="Unternehmen" message={res.error} />}
+      {res.ok && companies.length === 0 ? (
         <div className="card p-8 text-center text-sm text-brand-500">
           Noch keine Unternehmen angelegt.
         </div>
-      ) : (
+      ) : companies.length > 0 ? (
         <div className="card overflow-hidden">
           <table className="w-full text-left text-sm">
             <thead className="bg-brand-50 text-xs uppercase text-brand-500">
@@ -60,7 +64,7 @@ export default async function CompaniesPage() {
             </tbody>
           </table>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

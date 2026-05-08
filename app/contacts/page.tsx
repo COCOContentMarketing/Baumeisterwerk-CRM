@@ -1,20 +1,24 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/PageHeader";
+import { DbErrorBanner } from "@/components/DbErrorBanner";
 import { listAllContacts } from "@/lib/db/queries";
+import { safeRun } from "@/lib/db/safe";
 import { formatRelative } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
 export default async function ContactsPage() {
-  const contacts = await listAllContacts();
+  const res = await safeRun("listAllContacts", listAllContacts);
+  const contacts = res.ok ? res.data : [];
   return (
     <div>
-      <PageHeader title="Kontakte" subtitle={`${contacts.length} Personen`} />
-      {contacts.length === 0 ? (
+      <PageHeader title="Kontakte" subtitle={res.ok ? `${contacts.length} Personen` : undefined} />
+      {!res.ok && <DbErrorBanner area="Kontakte" message={res.error} />}
+      {res.ok && contacts.length === 0 ? (
         <div className="card p-8 text-center text-sm text-brand-500">
           Noch keine Kontakte. Lege zuerst ein Unternehmen an und füge dort Personen hinzu.
         </div>
-      ) : (
+      ) : contacts.length > 0 ? (
         <div className="card overflow-hidden">
           <table className="w-full text-left text-sm">
             <thead className="bg-brand-50 text-xs uppercase text-brand-500">
@@ -47,7 +51,7 @@ export default async function ContactsPage() {
             </tbody>
           </table>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

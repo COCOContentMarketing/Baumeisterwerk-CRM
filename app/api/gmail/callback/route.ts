@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
-import { getOAuthClient } from "@/lib/gmail/oauth";
+import { getOAuthClient, getRedirectUri } from "@/lib/gmail/oauth";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/db/queries";
 
@@ -8,33 +8,43 @@ export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
   const oauthError = req.nextUrl.searchParams.get("error");
   if (oauthError) {
-    console.error("Gmail OAuth Fehler:", oauthError);
-    return NextResponse.redirect(new URL(`/settings?gmail=error&detail=${oauthError}`, req.url));
+    console.error("[gmail/callback] OAuth-Fehler von Google:", oauthError);
+    return NextResponse.redirect(
+      new URL(`/settings?gmail=error&detail=${encodeURIComponent(oauthError)}`, req.url),
+    );
   }
   if (!code) {
-    return NextResponse.redirect(new URL("/settings?gmail=error", req.url));
+    return NextResponse.redirect(new URL("/settings?gmail=error&detail=no_code", req.url));
   }
 
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI;
-  if (!redirectUri) {
-    console.error("GOOGLE_REDIRECT_URI ist nicht gesetzt.");
-    return NextResponse.redirect(new URL("/settings?gmail=error&detail=missing_redirect_uri", req.url));
+  let redirectUri: string;
+  try {
+    redirectUri = getRedirectUri();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "missing_redirect_uri";
+    console.error("[gmail/callback] redirect_uri:", msg);
+    return NextResponse.redirect(
+      new URL(`/settings?gmail=error&detail=${encodeURIComponent(msg)}`, req.url),
+    );
   }
+
+  // Diagnose-Log: ein falsch konfiguriertes redirect_uri ist die Hauptursache
+  // fuer invalid_grant. Wir loggen den Wert (kein Secret), damit der
+  // Konfigurationsfehler in den Vercel-Logs sofort sichtbar ist.
+  console.log("[gmail/callback] Token-Tausch mit redirect_uri =", redirectUri);
 
   try {
     const auth = getOAuthClient();
-    // WICHTIG: redirect_uri muss EXAKT identisch zum Wert beim Auth-Request
-    // (siehe lib/gmail/oauth.ts buildAuthUrl) und zur Eintragung in der
-    // Google Cloud Console sein - sonst -> invalid_grant.
-    const { tokens } = await auth.getToken({
-      code,
-      redirect_uri: redirectUri,
-    });
+    // WICHTIG: redirect_uri muss byte-genau identisch sein zu:
+    //   1) dem Wert aus buildAuthUrl (lib/gmail/oauth.ts)
+    //   2) der in der Google Cloud Console eingetragenen Redirect-URI
+    // Sonst antwortet Google mit invalid_grant.
+    const { tokens } = await auth.getToken({ code, redirect_uri: redirectUri });
 
     if (!tokens.refresh_token) {
       // Tritt auf, wenn der Nutzer die App schon einmal autorisiert hat:
       // Google liefert den Refresh-Token nur einmalig aus, ausser wir
-      // erzwingen "prompt=consent" (machen wir in buildAuthUrl).
+      // erzwingen prompt=consent (machen wir in buildAuthUrl).
       return NextResponse.redirect(new URL("/settings?gmail=no_refresh_token", req.url));
     }
     auth.setCredentials(tokens);
@@ -68,10 +78,20 @@ export async function GET(req: NextRequest) {
     }
     return NextResponse.redirect(new URL("/settings?gmail=connected", req.url));
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "unknown";
-    console.error("Gmail callback fehlgeschlagen:", msg);
+    // Google-OAuth-Fehler liefern oft ein response.data-Objekt.
+    type GAxiosError = { response?: { data?: { error?: string; error_description?: string } } };
+    const axE = e as GAxiosError;
+    const detail =
+      axE.response?.data?.error_description ||
+      axE.response?.data?.error ||
+      (e instanceof Error ? e.message : "unknown");
+    console.error("[gmail/callback] Token-Tausch fehlgeschlagen. redirect_uri war:", redirectUri);
+    console.error("[gmail/callback] Fehler-Detail:", detail);
+    if (axE.response?.data) {
+      console.error("[gmail/callback] Google-Response:", axE.response.data);
+    }
     return NextResponse.redirect(
-      new URL(`/settings?gmail=error&detail=${encodeURIComponent(msg)}`, req.url),
+      new URL(`/settings?gmail=error&detail=${encodeURIComponent(detail)}`, req.url),
     );
   }
 }
