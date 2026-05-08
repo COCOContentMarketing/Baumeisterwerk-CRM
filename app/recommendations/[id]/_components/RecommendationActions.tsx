@@ -18,7 +18,7 @@ export function RecommendationActions({
   contactEmail: string | null;
   contactName: string | null;
 }) {
-  if (kind === "email" && contactId && contactEmail) {
+  if (kind === "email" && contactId) {
     return (
       <div className="space-y-3">
         <EmailComposer
