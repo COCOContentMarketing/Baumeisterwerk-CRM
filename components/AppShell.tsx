@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DragonIcon } from "./DragonIcon";
 
 const navItems = [
   { href: "/", label: "Dashboard" },
@@ -18,9 +19,14 @@ export function AppShell({
   return (
     <div className="flex min-h-screen">
       <aside className="w-60 shrink-0 border-r border-brand-100 bg-white px-4 py-6">
-        <Link href="/" className="mb-8 block">
-          <div className="text-lg font-semibold text-brand-900">Baumeisterwerk</div>
-          <div className="text-xs text-brand-500">CRM</div>
+        <Link href="/" className="mb-8 flex items-center gap-3">
+          <DragonIcon className="h-8 w-8 shrink-0 text-brand-900" />
+          <div>
+            <div className="text-lg font-semibold leading-tight text-brand-900">
+              Baumeisterwerk
+            </div>
+            <div className="text-xs text-brand-500">CRM</div>
+          </div>
         </Link>
         <nav className="space-y-1">
           {navItems.map((it) => (

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSupabaseServer } from "@/lib/supabase/server";
+import { DragonIcon } from "@/components/DragonIcon";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,8 @@ export default async function LoginPage({
   return (
     <div className="flex min-h-screen items-center justify-center bg-brand-50 px-4">
       <div className="w-full max-w-sm">
-        <div className="mb-6 text-center">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <DragonIcon className="mb-4 h-20 w-20 text-brand-900" />
           <div className="text-xl font-semibold text-brand-900">Baumeisterwerk</div>
           <div className="text-xs text-brand-500">CRM</div>
         </div>
