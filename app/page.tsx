@@ -6,6 +6,7 @@ import { listCompanies, listOpenRecommendations } from "@/lib/db/queries";
 import { safeRun } from "@/lib/db/safe";
 import { formatRelative } from "@/lib/format";
 import { GenerateRecommendationsButton } from "./_components/GenerateRecommendationsButton";
+import { CheckInboxButton } from "./_components/CheckInboxButton";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,12 @@ export default async function DashboardPage() {
       <PageHeader
         title="Dashboard"
         subtitle="Was als Nächstes ansteht."
-        actions={<GenerateRecommendationsButton />}
+        actions={
+          <div className="flex items-center gap-2">
+            <CheckInboxButton />
+            <GenerateRecommendationsButton />
+          </div>
+        }
       />
 
       {!companiesRes.ok && <DbErrorBanner area="Unternehmen" message={companiesRes.error} />}

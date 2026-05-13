@@ -3,6 +3,7 @@ import Image from "next/image";
 
 const navItems = [
   { href: "/", label: "Dashboard" },
+  { href: "/inbox", label: "Posteingang" },
   { href: "/companies", label: "Unternehmen" },
   { href: "/contacts", label: "Kontakte" },
   { href: "/recommendations", label: "Empfehlungen" },

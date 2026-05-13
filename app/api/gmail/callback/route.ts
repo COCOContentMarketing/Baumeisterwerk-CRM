@@ -57,6 +57,8 @@ export async function GET(req: NextRequest) {
     }
 
     const sb = getSupabaseAdmin();
+    const grantedScopes = (tokens.scope ?? "").split(/\s+/).filter(Boolean);
+
     const user = await getCurrentUser();
     if (user) {
       const { error } = await sb
@@ -64,6 +66,7 @@ export async function GET(req: NextRequest) {
         .update({
           gmail_refresh_token: tokens.refresh_token,
           gmail_account_email: email,
+          gmail_scopes: grantedScopes,
         })
         .eq("id", user.id);
       if (error) throw error;
@@ -73,6 +76,7 @@ export async function GET(req: NextRequest) {
         display_name: me.data.name ?? null,
         gmail_refresh_token: tokens.refresh_token,
         gmail_account_email: email,
+        gmail_scopes: grantedScopes,
       });
       if (error) throw error;
     }

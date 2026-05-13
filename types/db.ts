@@ -99,6 +99,9 @@ export interface Contact {
   notes: string | null;
   is_primary: boolean;
   last_interaction_at: string | null;
+  email_invalid: boolean;
+  email_invalid_since: string | null;
+  email_invalid_reason: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -117,6 +120,9 @@ export interface Interaction {
   gmail_thread_id: string | null;
   gmail_draft_id: string | null;
   metadata: Record<string, unknown> | null;
+  ai_classification: Record<string, unknown>;
+  is_bounce: boolean;
+  bounce_reason: string | null;
   created_at: string;
 }
 
@@ -137,6 +143,7 @@ export interface Recommendation {
   ai_model: string | null;
   ai_generated_at: string | null;
   resulting_interaction_id: string | null;
+  source_interaction_id: string | null;
   gmail_draft_id: string | null;
   created_at: string;
   updated_at: string;
@@ -149,6 +156,8 @@ export interface AppUser {
   signature: string | null;
   gmail_refresh_token: string | null;
   gmail_account_email: string | null;
+  gmail_last_history_id: string | null;
+  gmail_scopes: string[] | null;
   digest_email: string | null;
   digest_enabled: boolean;
   digest_last_sent_at: string | null;

@@ -11,6 +11,16 @@ export interface DraftInput {
   body: string;
   fromName?: string;
   fromEmail?: string;
+  // Wenn gesetzt, wird der Entwurf als Antwort in den bestehenden Gmail-
+  // Thread eingehaengt (Gmail-UI zeigt ihn dann als Reply im Thread).
+  replyTo?: {
+    threadId: string;
+    // RFC822 Message-Id der Ursprungsmail. Fuer korrekte Header-Threading
+    // bei Non-Gmail-Empfaengern. Falls null, faellt der Draft auf Thread-ID-
+    // basierte Gruppierung zurueck (Gmail-only).
+    messageIdHeader?: string | null;
+    references?: string[];
+  };
 }
 
 export async function createGmailDraft(input: DraftInput): Promise<{
@@ -30,17 +40,28 @@ export async function createGmailDraft(input: DraftInput): Promise<{
   auth.setCredentials({ refresh_token: user.gmail_refresh_token });
   const gmail = google.gmail({ version: "v1", auth });
 
+  const extraHeaders: Record<string, string> = {};
+  if (input.replyTo?.messageIdHeader) {
+    extraHeaders["In-Reply-To"] = input.replyTo.messageIdHeader;
+    const refs = [...(input.replyTo.references ?? []), input.replyTo.messageIdHeader];
+    extraHeaders["References"] = refs.join(" ");
+  }
+
   const rfc822 = buildMimeMessage({
     from: { email: fromEmail, name: fromName },
     to: { email: input.to, name: input.toName },
     subject: input.subject,
     bodyText: input.body,
+    extraHeaders: Object.keys(extraHeaders).length > 0 ? extraHeaders : undefined,
   });
   const raw = toBase64Url(rfc822);
 
+  const message: { raw: string; threadId?: string } = { raw };
+  if (input.replyTo?.threadId) message.threadId = input.replyTo.threadId;
+
   const res = await gmail.users.drafts.create({
     userId: "me",
-    requestBody: { message: { raw } },
+    requestBody: { message },
   });
 
   return {

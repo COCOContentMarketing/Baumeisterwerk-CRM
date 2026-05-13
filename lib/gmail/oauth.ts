@@ -1,13 +1,22 @@
 import { google } from "googleapis";
 
+export const GMAIL_SCOPE_COMPOSE = "https://www.googleapis.com/auth/gmail.compose";
+export const GMAIL_SCOPE_SEND = "https://www.googleapis.com/auth/gmail.send";
+export const GMAIL_SCOPE_READONLY = "https://www.googleapis.com/auth/gmail.readonly";
+export const GMAIL_SCOPE_USERINFO = "https://www.googleapis.com/auth/userinfo.email";
+
 export const GMAIL_SCOPES = [
-  // Drafts erstellen (Compose-Workflow)
-  "https://www.googleapis.com/auth/gmail.compose",
-  // Senden (Daily-Digest verschickt automatisch)
-  "https://www.googleapis.com/auth/gmail.send",
-  // Account-Email lesen
-  "https://www.googleapis.com/auth/userinfo.email",
+  GMAIL_SCOPE_COMPOSE,
+  GMAIL_SCOPE_SEND,
+  // Inbox-Sync braucht Lesezugriff auf Mails + History-API.
+  GMAIL_SCOPE_READONLY,
+  GMAIL_SCOPE_USERINFO,
 ];
+
+/** True wenn die Liste der gewaehrten Scopes Posteingang-Lesen erlaubt. */
+export function hasInboxScope(scopes: string[] | null | undefined): boolean {
+  return !!scopes?.includes(GMAIL_SCOPE_READONLY);
+}
 
 export function getRedirectUri(): string {
   const uri = process.env.GOOGLE_REDIRECT_URI;

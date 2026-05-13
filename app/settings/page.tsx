@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/db/queries";
 import { safeRun } from "@/lib/db/safe";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { disconnectGmail } from "@/lib/gmail/drafts";
+import { hasInboxScope } from "@/lib/gmail/oauth";
 
 export const dynamic = "force-dynamic";
 
@@ -125,6 +126,20 @@ export default async function SettingsPage({
             <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm">
               Verbunden mit <span className="font-medium">{user.gmail_account_email}</span>
             </div>
+            {!hasInboxScope(user.gmail_scopes) && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                <div className="font-medium">Posteingang-Zugriff fehlt</div>
+                <div className="mt-1 text-xs">
+                  Die aktuelle Verbindung erlaubt nur Drafts/Senden, aber kein
+                  Lesen des Posteingangs. Fuer Inbox-Sync und Reply-Empfehlungen
+                  bitte erneut verbinden - Google fragt diesmal nach dem
+                  zusaetzlichen Lesezugriff.
+                </div>
+                <a href="/api/gmail/connect" className="btn-secondary mt-2 inline-block">
+                  Posteingang-Zugriff aktivieren
+                </a>
+              </div>
+            )}
             <form action={disconnect}>
               <button className="btn-ghost text-rose-700 hover:bg-rose-50">Verbindung trennen</button>
             </form>
