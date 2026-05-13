@@ -24,7 +24,7 @@ const LABELS: Record<InteractionType, string> = {
 
 const INTENT_LABELS: Record<string, string> = {
   interesse: "Interesse",
-  rueckfrage: "Rueckfrage",
+  rueckfrage: "Rückfrage",
   absage: "Absage",
   ooo: "Abwesend",
   unklar: "Unklar",

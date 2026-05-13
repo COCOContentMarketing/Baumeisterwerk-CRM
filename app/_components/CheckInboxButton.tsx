@@ -52,7 +52,7 @@ export function CheckInboxButton() {
     <div className="flex items-center gap-3">
       {toast && <span className="text-xs text-brand-500">{toast}</span>}
       <button onClick={trigger} disabled={pending} className="btn-secondary">
-        {pending ? "Synchronisiere…" : "Posteingang pruefen"}
+        {pending ? "Synchronisiere…" : "Posteingang prüfen"}
       </button>
     </div>
   );

@@ -74,7 +74,7 @@ export default async function SettingsPage({
             </>
           )}
           <div className="mt-1 text-xs text-brand-700">
-            Pruefe, dass <code>GOOGLE_REDIRECT_URI</code> in den Vercel-Env-Vars exakt der bei
+            Prüfe, dass <code>GOOGLE_REDIRECT_URI</code> in den Vercel-Env-Vars exakt der bei
             Google Cloud Console eingetragenen Redirect-URI entspricht (inkl. https vs http und
             ohne Trailing-Slash).
           </div>
@@ -131,9 +131,9 @@ export default async function SettingsPage({
                 <div className="font-medium">Posteingang-Zugriff fehlt</div>
                 <div className="mt-1 text-xs">
                   Die aktuelle Verbindung erlaubt nur Drafts/Senden, aber kein
-                  Lesen des Posteingangs. Fuer Inbox-Sync und Reply-Empfehlungen
-                  bitte erneut verbinden - Google fragt diesmal nach dem
-                  zusaetzlichen Lesezugriff.
+                  Lesen des Posteingangs. Für Inbox-Sync und Reply-Empfehlungen
+                  bitte erneut verbinden – Google fragt diesmal nach dem
+                  zusätzlichen Lesezugriff.
                 </div>
                 <a href="/api/gmail/connect" className="btn-secondary mt-2 inline-block">
                   Posteingang-Zugriff aktivieren
