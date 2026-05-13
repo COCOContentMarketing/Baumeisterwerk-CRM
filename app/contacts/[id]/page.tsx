@@ -4,8 +4,11 @@ import { PageHeader } from "@/components/PageHeader";
 import { Timeline } from "@/components/Timeline";
 import { ChatComposer } from "@/components/ChatComposer";
 import { ComposeEmailButton } from "./_components/ComposeEmailButton";
+import { CompanyLinks } from "./_components/CompanyLinks";
 import {
   getContact,
+  listCompanies,
+  listCompaniesForContact,
   listContactsForCompany,
   listInteractionsForContact,
 } from "@/lib/db/queries";
@@ -14,17 +17,22 @@ export const dynamic = "force-dynamic";
 
 export default async function ContactDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ compose?: string }>;
 }) {
-  const { id } = await params;
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
   const contact = await getContact(id);
   if (!contact) notFound();
 
-  const [interactions, allCompanyContacts] = await Promise.all([
+  const [interactions, allCompanyContacts, linkedCompanies, allCompanies] = await Promise.all([
     listInteractionsForContact(id),
     listContactsForCompany(contact.company_id),
+    listCompaniesForContact(id),
+    listCompanies("all"),
   ]);
+  const composeOpen = sp.compose === "1";
 
   return (
     <div>
@@ -40,7 +48,9 @@ export default async function ContactDetailPage({
         }
         actions={
           <div className="flex items-center gap-2">
-            {contact.email && <ComposeEmailButton contactId={contact.id} />}
+            {contact.email && (
+              <ComposeEmailButton contactId={contact.id} initialOpen={composeOpen} />
+            )}
             <Link href={`/contacts/${contact.id}/edit`} className="btn-secondary">
               Bearbeiten
             </Link>
@@ -58,6 +68,12 @@ export default async function ContactDetailPage({
         </div>
 
         <aside className="space-y-6">
+          <CompanyLinks
+            contactId={contact.id}
+            links={linkedCompanies}
+            allCompanies={allCompanies}
+          />
+
           <section className="card p-6">
             <h2 className="mb-3 text-sm font-semibold text-brand-900">Kontaktdaten</h2>
             <dl className="space-y-2 text-xs">

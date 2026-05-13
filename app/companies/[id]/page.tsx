@@ -9,6 +9,7 @@ import {
   getCompany,
   listContactsForCompany,
   listInteractionsForCompany,
+  listLocations,
 } from "@/lib/db/queries";
 import { COMPANY_TYPE_LABELS } from "@/types/db";
 
@@ -19,16 +20,33 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
   const company = await getCompany(id);
   if (!company) notFound();
 
-  const [contacts, interactions] = await Promise.all([
+  const [contacts, interactions, locations, parent] = await Promise.all([
     listContactsForCompany(id),
     listInteractionsForCompany(id),
+    listLocations(id),
+    company.parent_company_id ? getCompany(company.parent_company_id) : Promise.resolve(null),
   ]);
 
   return (
     <div>
       <PageHeader
         title={company.name}
-        subtitle={`${COMPANY_TYPE_LABELS[company.type]}${company.city ? ` · ${company.city}` : ""}`}
+        subtitle={
+          <>
+            {parent && (
+              <>
+                Standort von{" "}
+                <Link href={`/companies/${parent.id}`} className="text-brand-700 hover:underline">
+                  {parent.name}
+                </Link>
+                {" · "}
+              </>
+            )}
+            {COMPANY_TYPE_LABELS[company.type]}
+            {company.location_label ? ` · ${company.location_label}` : company.city ? ` · ${company.city}` : ""}
+            {company.is_group && " · Gruppe"}
+          </>
+        }
         actions={
           <div className="flex items-center gap-2">
             <StatusBadge status={company.status} />
@@ -50,6 +68,43 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
         </div>
 
         <aside className="space-y-6">
+          {(company.is_group || locations.length > 0) && (
+            <section className="card p-6">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-brand-900">Standorte</h2>
+                <Link
+                  href={`/companies/${id}/locations/new`}
+                  className="text-xs font-medium text-brand-700 hover:underline"
+                >
+                  + Standort hinzufügen
+                </Link>
+              </div>
+              {locations.length === 0 ? (
+                <p className="text-xs text-brand-500">
+                  Noch keine Standorte. Lege einen an, um diesen Eintrag als Dach-Unternehmen zu nutzen.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {locations.map((loc) => (
+                    <li key={loc.id}>
+                      <Link
+                        href={`/companies/${loc.id}`}
+                        className="block rounded-md border border-brand-100 px-3 py-2 hover:border-brand-300 hover:bg-brand-50"
+                      >
+                        <div className="text-sm font-medium text-brand-900">
+                          {loc.location_label || loc.name}
+                        </div>
+                        <div className="text-xs text-brand-500">
+                          {loc.city ?? loc.address ?? loc.name}
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
+
           <section className="card p-6">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-brand-900">Kontaktpersonen</h2>
@@ -65,15 +120,28 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
             ) : (
               <ul className="space-y-3">
                 {contacts.map((c) => (
-                  <li key={c.id}>
-                    <Link href={`/contacts/${c.id}`} className="block hover:underline">
-                      <div className="text-sm font-medium text-brand-900">
-                        {c.full_name || c.email || "(unbenannt)"}
-                        {c.is_primary && <span className="ml-2 chip bg-brand-100 text-brand-700">Primär</span>}
+                  <li key={c.link_id} className="flex items-start justify-between gap-2">
+                    <Link href={`/contacts/${c.id}`} className="block min-w-0 flex-1 hover:underline">
+                      <div className="flex items-center gap-2 text-sm font-medium text-brand-900">
+                        <span className="truncate">{c.full_name || c.email || "(unbenannt)"}</span>
+                        {c.link_is_primary && (
+                          <span className="chip bg-brand-100 text-brand-700">Primär</span>
+                        )}
                       </div>
-                      {c.role && <div className="text-xs text-brand-500">{c.role}</div>}
-                      {c.email && <div className="text-xs text-brand-500">{c.email}</div>}
+                      {(c.link_role ?? c.role) && (
+                        <div className="text-xs text-brand-500">{c.link_role ?? c.role}</div>
+                      )}
+                      {c.email && <div className="truncate text-xs text-brand-500">{c.email}</div>}
                     </Link>
+                    {!c.link_is_primary && c.email && (
+                      <Link
+                        href={`/contacts/${c.id}?compose=1`}
+                        title="Zusaetzlich anschreiben"
+                        className="shrink-0 text-xs text-brand-700 hover:underline"
+                      >
+                        ✉ Anschreiben
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>
