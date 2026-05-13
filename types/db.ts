@@ -80,6 +80,20 @@ export interface Company {
   tags: string[] | null;
   last_interaction_at: string | null;
   next_action_at: string | null;
+  parent_company_id: string | null;
+  is_group: boolean;
+  location_label: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContactCompanyLink {
+  id: string;
+  contact_id: string;
+  company_id: string;
+  is_primary: boolean;
+  role: string | null;
+  owner_id: string | null;
   created_at: string;
   updated_at: string;
 }
