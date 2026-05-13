@@ -20,7 +20,7 @@ function snippetFromMetadata(meta: Record<string, unknown> | null): string | nul
 
 const INTENT_LABEL: Record<string, string> = {
   interesse: "Interesse",
-  rueckfrage: "Rueckfrage",
+  rueckfrage: "Rückfrage",
   absage: "Absage",
   ooo: "Abwesend",
   unklar: "Unklar",
@@ -85,7 +85,7 @@ export function InboxRow({ item }: { item: InboxItem }) {
         <div className="flex shrink-0 items-center gap-2">
           {reco ? (
             <Link href={`/recommendations/${reco.id}`} className="btn-primary">
-              Empfehlung oeffnen
+              Empfehlung öffnen
             </Link>
           ) : (
             <span className="text-xs text-brand-500" title="Noch keine offene Empfehlung">

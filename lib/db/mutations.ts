@@ -204,6 +204,39 @@ export async function setRecommendationStatus(id: string, status: Recommendation
   revalidatePath("/recommendations");
 }
 
+/**
+ * Schiebt eine Empfehlung auf Wiedervorlage. Wir speichern den Zeitpunkt in
+ * snoozed_until; der Readiness-Klassifikator in lib/recommendations/readiness.ts
+ * bewertet das Reco anschliessend als "wartend", bis die Zeit erreicht ist.
+ *
+ * @param until akzeptiert Date oder ISO-String. Werte in der Vergangenheit
+ *              sind erlaubt - sie wirken wie ein sofortiges Aufwecken.
+ */
+export async function snoozeRecommendation(id: string, until: Date | string) {
+  const sb = getSupabaseAdmin();
+  const iso = typeof until === "string" ? until : until.toISOString();
+  const { error } = await sb
+    .from("recommendations")
+    .update({ snoozed_until: iso })
+    .eq("id", id);
+  if (error) throw error;
+  revalidatePath("/");
+  revalidatePath("/recommendations");
+  revalidatePath(`/recommendations/${id}`);
+}
+
+export async function unsnoozeRecommendation(id: string) {
+  const sb = getSupabaseAdmin();
+  const { error } = await sb
+    .from("recommendations")
+    .update({ snoozed_until: null })
+    .eq("id", id);
+  if (error) throw error;
+  revalidatePath("/");
+  revalidatePath("/recommendations");
+  revalidatePath(`/recommendations/${id}`);
+}
+
 // ---------- Contact-Company-Links (Multi-Location) ----------
 
 export async function linkContact(input: {
