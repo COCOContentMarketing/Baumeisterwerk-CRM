@@ -2,8 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { PriorityBadge } from "@/components/PriorityBadge";
-import { getRecommendation } from "@/lib/db/queries";
-import { formatRelative } from "@/lib/format";
+import { getInteraction, getRecommendation } from "@/lib/db/queries";
+import { formatDateTime, formatRelative } from "@/lib/format";
+import { isReplyClassification } from "@/types/classification";
 import { RecommendationActions } from "./_components/RecommendationActions";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,14 @@ export default async function RecommendationDetailPage({
   const { id } = await params;
   const rec = await getRecommendation(id);
   if (!rec) notFound();
+
+  const source = rec.source_interaction_id
+    ? await getInteraction(rec.source_interaction_id)
+    : null;
+  const classification =
+    source && isReplyClassification(source.ai_classification)
+      ? source.ai_classification
+      : null;
 
   return (
     <div>
@@ -52,6 +61,43 @@ export default async function RecommendationDetailPage({
           <div className="mt-1 whitespace-pre-wrap">{rec.reason}</div>
           {rec.due_at && (
             <div className="mt-2 text-xs text-brand-500">Fällig {formatRelative(rec.due_at)}</div>
+          )}
+        </div>
+      )}
+
+      {source && (
+        <div className="card mb-4 p-4 text-sm text-brand-900">
+          <div className="mb-2 flex items-center gap-2 text-xs uppercase text-brand-500">
+            <span>📥 Original-Email</span>
+            <span>· {formatDateTime(source.occurred_at)}</span>
+            {classification && (
+              <span className="chip bg-sky-100 text-sky-900">
+                Intent: {classification.intent}
+              </span>
+            )}
+          </div>
+          {source.subject && <div className="mb-2 font-medium">{source.subject}</div>}
+          {source.body && (
+            <div className="max-h-64 overflow-y-auto whitespace-pre-wrap rounded-md bg-brand-50 p-3 text-sm">
+              {source.body.slice(0, 4000)}
+              {source.body.length > 4000 && "\n…"}
+            </div>
+          )}
+          {classification && classification.key_quotes.length > 0 && (
+            <div className="mt-3">
+              <div className="text-xs uppercase text-brand-500">Schluessel-Zitate</div>
+              <ul className="mt-1 list-disc pl-5 text-sm text-brand-700">
+                {classification.key_quotes.map((q, i) => (
+                  <li key={i} className="italic">&laquo;{q}&raquo;</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {classification?.suggested_next_step && (
+            <div className="mt-3 text-sm">
+              <span className="text-xs uppercase text-brand-500">Vorgeschlagener Schritt:</span>{" "}
+              {classification.suggested_next_step}
+            </div>
           )}
         </div>
       )}
