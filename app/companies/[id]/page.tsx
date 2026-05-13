@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { Timeline } from "@/components/Timeline";
 import { ChatComposer } from "@/components/ChatComposer";
+import { BounceBadge } from "@/app/_components/BounceBadge";
 import {
   getCompany,
   listContactsForCompany,
@@ -131,7 +132,18 @@ export default async function CompanyDetailPage({ params }: { params: Promise<{ 
                       {(c.link_role ?? c.role) && (
                         <div className="text-xs text-brand-500">{c.link_role ?? c.role}</div>
                       )}
-                      {c.email && <div className="truncate text-xs text-brand-500">{c.email}</div>}
+                      {c.email && (
+                        <div className="flex items-center gap-1 truncate text-xs text-brand-500">
+                          <span className="truncate">{c.email}</span>
+                          {c.email_invalid && (
+                            <BounceBadge
+                              compact
+                              reason={c.email_invalid_reason}
+                              since={c.email_invalid_since}
+                            />
+                          )}
+                        </div>
+                      )}
                     </Link>
                     {!c.link_is_primary && c.email && (
                       <Link

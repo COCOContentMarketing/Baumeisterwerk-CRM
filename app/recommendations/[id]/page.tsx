@@ -2,8 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/PageHeader";
 import { PriorityBadge } from "@/components/PriorityBadge";
+import { ReadinessBadge } from "@/app/_components/ReadinessBadge";
+import { BounceBadge } from "@/app/_components/BounceBadge";
+import { SnoozeMenu } from "@/app/_components/SnoozeMenu";
 import { getInteraction, getRecommendation } from "@/lib/db/queries";
 import { formatDateTime, formatRelative } from "@/lib/format";
+import { classifyReadiness } from "@/lib/recommendations/readiness";
 import { isReplyClassification } from "@/types/classification";
 import { RecommendationActions } from "./_components/RecommendationActions";
 
@@ -25,6 +29,11 @@ export default async function RecommendationDetailPage({
     source && isReplyClassification(source.ai_classification)
       ? source.ai_classification
       : null;
+  const readiness = classifyReadiness({
+    recommendation: rec,
+    contact: rec.contact,
+    now: new Date(),
+  });
 
   return (
     <div>
@@ -51,9 +60,33 @@ export default async function RecommendationDetailPage({
           <div className="flex items-center gap-2">
             <span className="chip bg-brand-100 text-brand-900">{rec.kind}</span>
             <PriorityBadge priority={rec.priority} />
+            <ReadinessBadge readiness={readiness} snoozedUntil={rec.snoozed_until} />
+            <SnoozeMenu recommendationId={rec.id} snoozedUntil={rec.snoozed_until} />
           </div>
         }
       />
+
+      {rec.contact?.email_invalid && (
+        <div className="card mb-4 flex items-start gap-3 border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+          <BounceBadge
+            reason={rec.contact.email_invalid_reason}
+            since={rec.contact.email_invalid_since}
+          />
+          <div className="flex-1">
+            <div className="font-medium">Email-Adresse als ungültig markiert</div>
+            {rec.contact.email_invalid_reason && (
+              <div className="text-xs">{rec.contact.email_invalid_reason}</div>
+            )}
+            <div className="mt-1 text-xs">
+              Adresse von{" "}
+              <Link href={`/contacts/${rec.contact.id}`} className="underline">
+                {rec.contact.full_name ?? "Kontakt"}
+              </Link>{" "}
+              bitte zuerst korrigieren oder verifizieren.
+            </div>
+          </div>
+        </div>
+      )}
 
       {rec.reason && (
         <div className="card mb-4 p-4 text-sm text-brand-700">

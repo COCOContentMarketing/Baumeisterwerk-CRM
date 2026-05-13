@@ -5,6 +5,7 @@ import { Timeline } from "@/components/Timeline";
 import { ChatComposer } from "@/components/ChatComposer";
 import { ComposeEmailButton } from "./_components/ComposeEmailButton";
 import { CompanyLinks } from "./_components/CompanyLinks";
+import { BounceBadge } from "@/app/_components/BounceBadge";
 import {
   getContact,
   listCompanies,
@@ -12,6 +13,7 @@ import {
   listContactsForCompany,
   listInteractionsForContact,
 } from "@/lib/db/queries";
+import { formatRelative } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +70,33 @@ export default async function ContactDetailPage({
         </div>
 
         <aside className="space-y-6">
+          {contact.email_invalid && (
+            <section className="card border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+              <div className="mb-1 flex items-center gap-2">
+                <BounceBadge
+                  reason={contact.email_invalid_reason}
+                  since={contact.email_invalid_since}
+                />
+                <span className="font-medium">Email-Adresse als ungültig markiert</span>
+              </div>
+              {contact.email_invalid_reason && (
+                <div className="text-xs">{contact.email_invalid_reason}</div>
+              )}
+              {contact.email_invalid_since && (
+                <div className="text-xs">
+                  Markiert {formatRelative(contact.email_invalid_since)}.
+                </div>
+              )}
+              <div className="mt-1 text-xs">
+                Adresse korrigieren oder verifizieren, dann den Vermerk im{" "}
+                <Link href={`/contacts/${contact.id}/edit`} className="underline">
+                  Bearbeiten-Dialog
+                </Link>{" "}
+                entfernen.
+              </div>
+            </section>
+          )}
+
           <CompanyLinks
             contactId={contact.id}
             links={linkedCompanies}
@@ -82,6 +111,13 @@ export default async function ContactDetailPage({
                   <a href={`mailto:${contact.email}`} className="text-brand-700 hover:underline">
                     {contact.email}
                   </a>
+                  {contact.email_invalid && (
+                    <BounceBadge
+                      compact
+                      reason={contact.email_invalid_reason}
+                      since={contact.email_invalid_since}
+                    />
+                  )}
                 </Detail>
               )}
               {contact.phone && <Detail label="Telefon">{contact.phone}</Detail>}
