@@ -3,6 +3,7 @@ import type {
   AppUser,
   Company,
   Contact,
+  ContactCompanyLink,
   Interaction,
   Priority,
   Recommendation,
@@ -41,12 +42,33 @@ export async function getCurrentUser(): Promise<AppUser | null> {
   return data as AppUser | null;
 }
 
-export async function listCompanies(): Promise<Company[]> {
+export type CompanyView = "all" | "groups" | "leafs";
+
+export async function listCompanies(view: CompanyView = "all"): Promise<Company[]> {
   const sb = getSupabaseAdmin();
   const { data, error } = await sb.from("companies").select("*");
   if (error) throw error;
   const list = (data ?? []) as Company[];
-  return list.sort(byPriorityThenName);
+  const filtered =
+    view === "groups"
+      ? list.filter((c) => c.is_group)
+      : view === "leafs"
+        ? list.filter((c) => !!c.parent_company_id)
+        : list;
+  return filtered.sort(byPriorityThenName);
+}
+
+export async function listLocations(parentCompanyId: string): Promise<Company[]> {
+  const sb = getSupabaseAdmin();
+  const { data, error } = await sb
+    .from("companies")
+    .select("*")
+    .eq("parent_company_id", parentCompanyId);
+  if (error) throw error;
+  const list = (data ?? []) as Company[];
+  return list.sort((a, b) =>
+    (a.location_label ?? a.name).localeCompare(b.location_label ?? b.name, "de"),
+  );
 }
 
 export async function getCompany(id: string): Promise<Company | null> {
@@ -56,12 +78,123 @@ export async function getCompany(id: string): Promise<Company | null> {
   return data as Company | null;
 }
 
-export async function listContactsForCompany(companyId: string): Promise<Contact[]> {
+/** Kontakt-Sicht aus einer Standort-Perspektive (Link-basiert). */
+export type ContactForCompany = Contact & {
+  link_id: string;
+  link_is_primary: boolean;
+  link_role: string | null;
+};
+
+export async function listContactsForCompany(companyId: string): Promise<ContactForCompany[]> {
   const sb = getSupabaseAdmin();
-  const { data, error } = await sb.from("contacts").select("*").eq("company_id", companyId);
+  // Quelle der Wahrheit: contact_company_links. Anker-Spalte contacts.company_id
+  // wird ignoriert - was zaehlt, ist der Link an die jeweilige Company.
+  const { data: linkRows, error: lErr } = await sb
+    .from("contact_company_links")
+    .select("*")
+    .eq("company_id", companyId);
+  if (lErr) throw lErr;
+  const links = (linkRows ?? []) as ContactCompanyLink[];
+  if (links.length === 0) return [];
+
+  const contactIds = links.map((l) => l.contact_id);
+  const { data: contacts, error: cErr } = await sb
+    .from("contacts")
+    .select("*")
+    .in("id", contactIds);
+  if (cErr) throw cErr;
+  const cMap = new Map(((contacts ?? []) as Contact[]).map((c) => [c.id, c]));
+
+  const merged: ContactForCompany[] = links
+    .map((l) => {
+      const c = cMap.get(l.contact_id);
+      return c
+        ? {
+            ...c,
+            link_id: l.id,
+            link_is_primary: l.is_primary,
+            link_role: l.role,
+          }
+        : null;
+    })
+    .filter((x): x is ContactForCompany => x !== null);
+
+  return merged.sort((a, b) => {
+    const ap = a.link_is_primary ? 0 : 1;
+    const bp = b.link_is_primary ? 0 : 1;
+    return ap - bp || (a.last_name ?? "").localeCompare(b.last_name ?? "", "de");
+  });
+}
+
+export async function getPrimaryContactForCompany(
+  companyId: string,
+): Promise<Contact | null> {
+  const sb = getSupabaseAdmin();
+  const { data: link, error: lErr } = await sb
+    .from("contact_company_links")
+    .select("contact_id")
+    .eq("company_id", companyId)
+    .eq("is_primary", true)
+    .maybeSingle();
+  if (lErr) throw lErr;
+  if (!link?.contact_id) return null;
+  const { data: contact, error: cErr } = await sb
+    .from("contacts")
+    .select("*")
+    .eq("id", link.contact_id)
+    .maybeSingle();
+  if (cErr) throw cErr;
+  return contact as Contact | null;
+}
+
+export type CompanyForContact = Company & {
+  link_id: string;
+  link_is_primary: boolean;
+  link_role: string | null;
+};
+
+export async function listCompaniesForContact(
+  contactId: string,
+): Promise<CompanyForContact[]> {
+  const sb = getSupabaseAdmin();
+  const { data: linkRows, error: lErr } = await sb
+    .from("contact_company_links")
+    .select("*")
+    .eq("contact_id", contactId);
+  if (lErr) throw lErr;
+  const links = (linkRows ?? []) as ContactCompanyLink[];
+  if (links.length === 0) return [];
+
+  const companyIds = links.map((l) => l.company_id);
+  const { data: companies, error: cErr } = await sb
+    .from("companies")
+    .select("*")
+    .in("id", companyIds);
+  if (cErr) throw cErr;
+  const coMap = new Map(((companies ?? []) as Company[]).map((c) => [c.id, c]));
+
+  return links
+    .map((l) => {
+      const c = coMap.get(l.company_id);
+      return c
+        ? {
+            ...c,
+            link_id: l.id,
+            link_is_primary: l.is_primary,
+            link_role: l.role,
+          }
+        : null;
+    })
+    .filter((x): x is CompanyForContact => x !== null)
+    .sort((a, b) => a.name.localeCompare(b.name, "de"));
+}
+
+/** Alle Links als Map fuer die Recommendations-Engine (n:m). */
+export async function listAllContactCompanyLinks(): Promise<ContactCompanyLink[]> {
+  const sb = getSupabaseAdmin();
+  const { data, error } = await sb.from("contact_company_links").select("*");
   if (error) throw error;
-  const list = (data ?? []) as Contact[];
-  return list.sort(byLastNameAsc);
+  return (data ?? []) as ContactCompanyLink[];
 }
 
 // Listet alle Kontakte und haengt das Unternehmen via separaten Lookup an.

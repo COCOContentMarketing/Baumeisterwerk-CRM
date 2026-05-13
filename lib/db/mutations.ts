@@ -98,6 +98,18 @@ export async function createContact(input: {
     .select("id")
     .single();
   if (error) throw error;
+
+  // Spiegelt den Kontakt sofort als Link auf seine Anker-Company. Das ist
+  // ab Migration 0008 die Quelle der Wahrheit fuer "primaerer Kontakt
+  // dieses Standorts" (Trigger demoted andere Primaries der Company).
+  const linkRes = await sb.from("contact_company_links").insert({
+    contact_id: data.id as string,
+    company_id: input.company_id,
+    is_primary: input.is_primary ?? false,
+    role: input.role ?? null,
+  });
+  if (linkRes.error && String(linkRes.error.code) !== "23505") throw linkRes.error;
+
   revalidatePath(`/companies/${input.company_id}`);
   revalidatePath("/contacts");
   return data.id as string;
@@ -124,6 +136,18 @@ export async function updateContact(
     .select("company_id")
     .single();
   if (error) throw error;
+
+  // Wenn is_primary geaendert wurde: zusaetzlich den Link auf die Anker-
+  // Company spiegeln (Backward-Compat fuer alte Edit-Form). Der DB-Trigger
+  // demoted automatisch andere Primaries derselben Company.
+  if (patch.is_primary !== undefined) {
+    await sb
+      .from("contact_company_links")
+      .update({ is_primary: patch.is_primary })
+      .eq("contact_id", id)
+      .eq("company_id", data.company_id);
+  }
+
   revalidatePath(`/companies/${data.company_id}`);
   revalidatePath(`/contacts/${id}`);
 }
@@ -178,4 +202,101 @@ export async function setRecommendationStatus(id: string, status: Recommendation
   if (error) throw error;
   revalidatePath("/");
   revalidatePath("/recommendations");
+}
+
+// ---------- Contact-Company-Links (Multi-Location) ----------
+
+export async function linkContact(input: {
+  contact_id: string;
+  company_id: string;
+  role?: string | null;
+  is_primary?: boolean;
+}) {
+  const sb = getSupabaseAdmin();
+  const { error } = await sb
+    .from("contact_company_links")
+    .upsert(
+      {
+        contact_id: input.contact_id,
+        company_id: input.company_id,
+        role: input.role ?? null,
+        is_primary: input.is_primary ?? false,
+      },
+      { onConflict: "contact_id,company_id" },
+    );
+  if (error) throw error;
+  revalidatePath(`/contacts/${input.contact_id}`);
+  revalidatePath(`/companies/${input.company_id}`);
+}
+
+export async function unlinkContact(input: { contact_id: string; company_id: string }) {
+  const sb = getSupabaseAdmin();
+  const { error } = await sb
+    .from("contact_company_links")
+    .delete()
+    .eq("contact_id", input.contact_id)
+    .eq("company_id", input.company_id);
+  if (error) throw error;
+  revalidatePath(`/contacts/${input.contact_id}`);
+  revalidatePath(`/companies/${input.company_id}`);
+}
+
+/**
+ * Setzt einen Kontakt als primaer fuer eine Company. Der DB-Trigger
+ * set_single_primary_per_company demoted automatisch alle anderen
+ * Primaries derselben Company - die UI muss das nicht selbst tun.
+ */
+export async function setPrimaryContact(input: { contact_id: string; company_id: string }) {
+  const sb = getSupabaseAdmin();
+  const { error } = await sb
+    .from("contact_company_links")
+    .update({ is_primary: true })
+    .eq("contact_id", input.contact_id)
+    .eq("company_id", input.company_id);
+  if (error) throw error;
+  revalidatePath(`/contacts/${input.contact_id}`);
+  revalidatePath(`/companies/${input.company_id}`);
+}
+
+// ---------- Locations (Multi-Location) ----------
+
+export async function createLocation(input: {
+  parent_company_id: string;
+  name: string;
+  location_label?: string | null;
+  city?: string | null;
+  address?: string | null;
+  notes?: string | null;
+}) {
+  const sb = getSupabaseAdmin();
+  // Defaults erben wir bewusst NICHT automatisch vom Parent (waere intransparent);
+  // die UI kann sie vor Submit per Defaultwert vorbelegen.
+  const { data, error } = await sb
+    .from("companies")
+    .insert({
+      name: input.name,
+      type: "sonstige",
+      status: "lead",
+      priority: "mittel",
+      parent_company_id: input.parent_company_id,
+      is_group: false,
+      location_label: input.location_label ?? null,
+      city: input.city ?? null,
+      address: input.address ?? null,
+      notes: input.notes ?? null,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+
+  // Parent automatisch als Gruppe markieren, falls noch nicht gesetzt.
+  await sb
+    .from("companies")
+    .update({ is_group: true })
+    .eq("id", input.parent_company_id)
+    .eq("is_group", false);
+
+  revalidatePath(`/companies/${input.parent_company_id}`);
+  revalidatePath("/companies");
+  return data.id as string;
 }

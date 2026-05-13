@@ -3,8 +3,14 @@
 import { useState, useEffect } from "react";
 import { EmailComposer } from "@/components/EmailComposer";
 
-export function ComposeEmailButton({ contactId }: { contactId: string }) {
-  const [open, setOpen] = useState(false);
+export function ComposeEmailButton({
+  contactId,
+  initialOpen = false,
+}: {
+  contactId: string;
+  initialOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(initialOpen);
   const [contact, setContact] = useState<{ email: string; full_name: string | null } | null>(null);
 
   useEffect(() => {

@@ -22,6 +22,9 @@ function makeCompany(overrides: Partial<Company> = {}): Company {
     tags: null,
     last_interaction_at: INBOUND_AT,
     next_action_at: null,
+    parent_company_id: null,
+    is_group: false,
+    location_label: null,
     created_at: INBOUND_AT,
     updated_at: INBOUND_AT,
     ...overrides,
@@ -50,7 +53,7 @@ function makeContact(overrides: Partial<Contact> = {}): Contact {
     created_at: INBOUND_AT,
     updated_at: INBOUND_AT,
     ...overrides,
-  };
+  } satisfies Contact;
 }
 
 function makeInbound(classification: ReplyClassification | null, overrides: Partial<Interaction> = {}): Interaction {

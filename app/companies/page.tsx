@@ -3,15 +3,32 @@ import { PageHeader } from "@/components/PageHeader";
 import { StatusBadge } from "@/components/StatusBadge";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { DbErrorBanner } from "@/components/DbErrorBanner";
-import { listCompanies } from "@/lib/db/queries";
+import { listCompanies, type CompanyView } from "@/lib/db/queries";
 import { safeRun } from "@/lib/db/safe";
 import { COMPANY_TYPE_LABELS } from "@/types/db";
 import { formatRelative } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-export default async function CompaniesPage() {
-  const res = await safeRun("listCompanies", listCompanies);
+const FILTER_LABELS: Record<CompanyView, string> = {
+  all: "Alle",
+  groups: "Nur Dach",
+  leafs: "Nur Standorte",
+};
+
+function asView(v: string | undefined): CompanyView {
+  if (v === "groups" || v === "leafs") return v;
+  return "all";
+}
+
+export default async function CompaniesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
+  const params = await searchParams;
+  const view = asView(params.view);
+  const res = await safeRun("listCompanies", () => listCompanies(view));
   const companies = res.ok ? res.data : [];
   return (
     <div>
@@ -24,10 +41,25 @@ export default async function CompaniesPage() {
           </Link>
         }
       />
+      <div className="mb-4 flex flex-wrap gap-2">
+        {(Object.keys(FILTER_LABELS) as CompanyView[]).map((v) => {
+          const active = v === view;
+          const href = v === "all" ? "/companies" : `/companies?view=${v}`;
+          return (
+            <Link
+              key={v}
+              href={href}
+              className={`chip ${active ? "bg-brand-900 text-white" : "bg-brand-100 text-brand-900 hover:bg-brand-200"}`}
+            >
+              {FILTER_LABELS[v]}
+            </Link>
+          );
+        })}
+      </div>
       {!res.ok && <DbErrorBanner area="Unternehmen" message={res.error} />}
       {res.ok && companies.length === 0 ? (
         <div className="card p-8 text-center text-sm text-brand-500">
-          Noch keine Unternehmen angelegt.
+          Keine Unternehmen in dieser Ansicht.
         </div>
       ) : companies.length > 0 ? (
         <div className="card overflow-hidden">
