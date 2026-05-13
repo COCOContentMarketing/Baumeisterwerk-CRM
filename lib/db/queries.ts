@@ -124,6 +124,99 @@ export async function listInteractionsForContact(contactId: string): Promise<Int
   return ((data ?? []) as Interaction[]).sort(byOccurredAtAsc);
 }
 
+export type InboxItem = Interaction & {
+  contact: Contact | null;
+  company: Company | null;
+  open_recommendation: { id: string; kind: string; priority: Priority } | null;
+};
+
+// Inbox-View: Inbound-Mails der letzten Tage, jeweils mit dem Status der
+// dazu offenen Reply-Recommendation. "Erledigt" wird ueber die Recommendation
+// gesteuert (kein eigenes Flag auf interactions).
+export async function listInboxItems(): Promise<InboxItem[]> {
+  const sb = getSupabaseAdmin();
+  const { data, error } = await sb
+    .from("interactions")
+    .select("*")
+    .eq("type", "email_received")
+    .eq("is_bounce", false);
+  if (error) throw error;
+  const list = (data ?? []) as Interaction[];
+  if (list.length === 0) return [];
+
+  const sorted = list.sort((a, b) => b.occurred_at.localeCompare(a.occurred_at)).slice(0, 100);
+
+  const contactIds = Array.from(
+    new Set(sorted.map((i) => i.contact_id).filter((x): x is string => !!x)),
+  );
+  const companyIds = Array.from(new Set(sorted.map((i) => i.company_id)));
+  const interactionIds = sorted.map((i) => i.id);
+
+  const [contactsRes, companiesRes, recosRes] = await Promise.all([
+    contactIds.length > 0
+      ? sb.from("contacts").select("*").in("id", contactIds)
+      : Promise.resolve({ data: [] as Contact[], error: null }),
+    companyIds.length > 0
+      ? sb.from("companies").select("*").in("id", companyIds)
+      : Promise.resolve({ data: [] as Company[], error: null }),
+    interactionIds.length > 0
+      ? sb
+          .from("recommendations")
+          .select("id, kind, priority, source_interaction_id, status")
+          .in("source_interaction_id", interactionIds)
+          .eq("status", "offen")
+      : Promise.resolve({
+          data: [] as {
+            id: string;
+            kind: string;
+            priority: Priority;
+            source_interaction_id: string;
+            status: string;
+          }[],
+          error: null,
+        }),
+  ]);
+  if (contactsRes.error) throw contactsRes.error;
+  if (companiesRes.error) throw companiesRes.error;
+  if (recosRes.error) throw recosRes.error;
+
+  const pMap = new Map(((contactsRes.data ?? []) as Contact[]).map((c) => [c.id, c]));
+  const coMap = new Map(((companiesRes.data ?? []) as Company[]).map((c) => [c.id, c]));
+  type RecoRow = {
+    id: string;
+    kind: string;
+    priority: Priority;
+    source_interaction_id: string | null;
+  };
+  const rMap = new Map<string, RecoRow>();
+  for (const r of (recosRes.data ?? []) as RecoRow[]) {
+    if (r.source_interaction_id) rMap.set(r.source_interaction_id, r);
+  }
+
+  return sorted.map((i) => {
+    const reco = rMap.get(i.id);
+    return {
+      ...i,
+      contact: i.contact_id ? pMap.get(i.contact_id) ?? null : null,
+      company: coMap.get(i.company_id) ?? null,
+      open_recommendation: reco
+        ? { id: reco.id, kind: reco.kind, priority: reco.priority }
+        : null,
+    };
+  });
+}
+
+export async function getInteraction(id: string): Promise<Interaction | null> {
+  const sb = getSupabaseAdmin();
+  const { data, error } = await sb
+    .from("interactions")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return data as Interaction | null;
+}
+
 export type RecommendationWithRefs = Recommendation & {
   company: Company | null;
   contact: Contact | null;

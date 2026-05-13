@@ -20,6 +20,7 @@ import type {
   Priority,
   RecommendationKind,
 } from "@/types/db";
+import { isReplyClassification, type ReplyClassification } from "@/types/classification";
 
 export interface PendingAction {
   contact: Contact;
@@ -31,6 +32,14 @@ export interface PendingAction {
   due_at: string;
   // Vorlage, die als Basis fuer die KI-Generierung dient.
   template_use_case: string;
+  // Wenn die Pending-Action aus einer klassifizierten Inbound-Mail entsteht,
+  // werden die wichtigsten Klassifikations-Felder hier mitgeliefert, damit die
+  // Draft-Pipeline (engine.ts) konkrete Zitate in den Claude-Prompt einbauen kann.
+  inbound_reply_context?: {
+    interaction_id: string;
+    classification: ReplyClassification;
+    excerpt: string;
+  };
 }
 
 export interface CadenceInput {
@@ -103,20 +112,12 @@ export function evaluateContact(input: CadenceInput): PendingAction | null {
 
   // 2. Inbound erhalten und noch nicht beantwortet
   if (lastInbound && (!lastOutbound || lastInbound.occurred_at > lastOutbound.occurred_at)) {
-    const ageHrs = (now.getTime() - new Date(lastInbound.occurred_at).getTime()) / 36e5;
-    if (ageHrs > 4) {
-      return {
-        contact,
-        company,
-        kind: "email",
-        priority: "hoch",
-        title: `Antwort an ${displayName(contact)} ausstehend`,
-        reason: `${displayName(contact)} hat am ${shortDate(lastInbound.occurred_at)} geschrieben und noch keine Antwort erhalten.`,
-        due_at: now.toISOString(),
-        template_use_case: "inbound_reply",
-      };
-    }
-    return null;
+    // Bounce-Erkennungen erzeugen KEINE Reply-Empfehlung - sie loesen
+    // einen separaten Data-Health-Reco-Pfad in process.ts aus.
+    if (lastInbound.is_bounce) return null;
+
+    const classification = readClassification(lastInbound.ai_classification);
+    return inboundReplyAction({ contact, company, lastInbound, classification, now });
   }
 
   // 3. Aktiver Kunde: regelmaessiger Touchbase
@@ -211,6 +212,113 @@ export function evaluateContact(input: CadenceInput): PendingAction | null {
   }
 
   return null;
+}
+
+function readClassification(raw: unknown): ReplyClassification | null {
+  return isReplyClassification(raw) ? raw : null;
+}
+
+function inboundReplyAction(args: {
+  contact: Contact;
+  company: Company;
+  lastInbound: Interaction;
+  classification: ReplyClassification | null;
+  now: Date;
+}): PendingAction | null {
+  const { contact, company, lastInbound, classification, now } = args;
+  const name = displayName(contact);
+  const inboundDate = shortDate(lastInbound.occurred_at);
+  const excerpt = (lastInbound.body ?? "").slice(0, 600);
+  const baseContext = classification
+    ? {
+        interaction_id: lastInbound.id,
+        classification,
+        excerpt,
+      }
+    : undefined;
+
+  // Ohne Klassifikation: wie frueher mit 4h-Karenz und generischem Template.
+  if (!classification) {
+    const ageHrs = (now.getTime() - new Date(lastInbound.occurred_at).getTime()) / 36e5;
+    if (ageHrs <= 4) return null;
+    return {
+      contact,
+      company,
+      kind: "email",
+      priority: "hoch",
+      title: `Antwort an ${name} ausstehend`,
+      reason: `${name} hat am ${inboundDate} geschrieben und noch keine Antwort erhalten.`,
+      due_at: now.toISOString(),
+      template_use_case: "inbound_reply",
+    };
+  }
+
+  switch (classification.intent) {
+    case "interesse":
+      return {
+        contact,
+        company,
+        kind: "email",
+        priority: "hoch",
+        title: `Interesse-Antwort an ${name}`,
+        reason: `${name} signalisiert Interesse (${inboundDate}). Naechster Schritt: ${classification.suggested_next_step}.`,
+        due_at: now.toISOString(),
+        template_use_case: "inbound_reply_interest",
+        inbound_reply_context: baseContext,
+      };
+    case "rueckfrage":
+      return {
+        contact,
+        company,
+        kind: "email",
+        priority: "hoch",
+        title: `Rueckfrage von ${name} beantworten`,
+        reason: `${name} hat am ${inboundDate} eine inhaltliche Rueckfrage gestellt.`,
+        due_at: now.toISOString(),
+        template_use_case: "inbound_reply_rueckfrage",
+        inbound_reply_context: baseContext,
+      };
+    case "absage":
+      return {
+        contact,
+        company,
+        kind: "email",
+        priority: "niedrig",
+        title: `Reaktivierung von ${name} in 3-6 Monaten`,
+        reason: `${name} hat am ${inboundDate} freundlich abgesagt. In 90 Tagen mit neuem Anlass anklopfen.`,
+        due_at: addDays(now, 90).toISOString(),
+        template_use_case: "inbound_reply_absage_reaktivierung",
+        inbound_reply_context: baseContext,
+      };
+    case "ooo": {
+      const dueIso = classification.ooo_until
+        ? new Date(classification.ooo_until).toISOString()
+        : addDays(now, 7).toISOString();
+      return {
+        contact,
+        company,
+        kind: "follow_up",
+        priority: "mittel",
+        title: `Wiedervorlage ${name} nach Abwesenheit`,
+        reason: `Auto-Reply von ${name} (${inboundDate}). Wiedervorlage zum Ende der Abwesenheit.`,
+        due_at: dueIso,
+        template_use_case: "inbound_reply_ooo",
+        inbound_reply_context: baseContext,
+      };
+    }
+    case "unklar":
+      return {
+        contact,
+        company,
+        kind: "email",
+        priority: "mittel",
+        title: `Klarstellung mit ${name}`,
+        reason: `Antwort von ${name} (${inboundDate}) nicht eindeutig - kurze Rueckfrage anstossen.`,
+        due_at: now.toISOString(),
+        template_use_case: "inbound_reply_unklar",
+        inbound_reply_context: baseContext,
+      };
+  }
 }
 
 function displayName(c: Contact): string {

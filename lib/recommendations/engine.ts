@@ -98,6 +98,7 @@ export async function persistRecommendations(actions: PendingAction[]): Promise<
           title: a.title,
           reason: a.reason,
           due_at: a.due_at,
+          source_interaction_id: a.inbound_reply_context?.interaction_id ?? null,
         })
         .eq("id", existingId);
       updated++;
@@ -111,6 +112,7 @@ export async function persistRecommendations(actions: PendingAction[]): Promise<
         title: a.title,
         reason: a.reason,
         due_at: a.due_at,
+        source_interaction_id: a.inbound_reply_context?.interaction_id ?? null,
       });
       created++;
     }
