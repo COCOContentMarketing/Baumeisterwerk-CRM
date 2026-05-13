@@ -159,6 +159,7 @@ export interface Recommendation {
   resulting_interaction_id: string | null;
   source_interaction_id: string | null;
   gmail_draft_id: string | null;
+  snoozed_until: string | null;
   created_at: string;
   updated_at: string;
 }
