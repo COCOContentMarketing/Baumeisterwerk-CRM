@@ -62,51 +62,98 @@ export default async function CompaniesPage({
           Keine Unternehmen in dieser Ansicht.
         </div>
       ) : companies.length > 0 ? (
-        <div className="card overflow-hidden">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-brand-50 text-xs uppercase text-brand-500">
-              <tr>
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Typ</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Priorität</th>
-                <th className="px-4 py-3">Stadt</th>
-                <th className="px-4 py-3">Letzter Kontakt</th>
-              </tr>
-            </thead>
-            <tbody>
-              {companies.map((c) => (
-                <tr key={c.id} className="border-t border-brand-100 hover:bg-brand-50/50">
-                  <td className="px-4 py-3">
-                    <Link href={`/companies/${c.id}`} className="font-medium text-brand-900 hover:underline">
-                      {c.name}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-brand-700">{COMPANY_TYPE_LABELS[c.type]}</td>
-                  <td className="px-4 py-3">
+        <>
+          {/* Mobil: Karten statt Tabelle */}
+          <div className="space-y-3 md:hidden">
+            {companies.map((c) => (
+              <div key={c.id} className="card p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <Link
+                    href={`/companies/${c.id}`}
+                    className="font-medium text-brand-900 hover:underline"
+                  >
+                    {c.name}
+                  </Link>
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
                     <StatusBadge status={c.status} />
-                  </td>
-                  <td className="px-4 py-3">
                     <PriorityBadge priority={c.priority} />
-                  </td>
-                  <td className="px-4 py-3 text-brand-700">{c.city ?? "—"}</td>
-                  <td className="px-4 py-3 text-brand-500">
+                  </div>
+                </div>
+                <dl className="mt-2 space-y-1 text-xs text-brand-500">
+                  <div>
+                    <span className="text-brand-400">Typ:</span>{" "}
+                    {COMPANY_TYPE_LABELS[c.type]}
+                  </div>
+                  {c.city && (
+                    <div>
+                      <span className="text-brand-400">Stadt:</span> {c.city}
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-brand-400">Letzter Kontakt:</span>{" "}
                     {formatRelative(c.effective_last_interaction_at)}
                     {c.is_group &&
                       c.effective_last_interaction_at !== c.last_interaction_at && (
                         <span
-                          className="ml-1 text-xs text-brand-400"
+                          className="ml-1 text-brand-400"
                           title="Spätester Kontakt über alle Standorte dieser Gruppe"
                         >
                           (Standort)
                         </span>
                       )}
-                  </td>
+                  </div>
+                </dl>
+              </div>
+            ))}
+          </div>
+
+          {/* Ab md: Tabelle */}
+          <div className="card hidden overflow-hidden md:block">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-brand-50 text-xs uppercase text-brand-500">
+                <tr>
+                  <th className="px-4 py-3">Name</th>
+                  <th className="px-4 py-3">Typ</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Priorität</th>
+                  <th className="px-4 py-3">Stadt</th>
+                  <th className="px-4 py-3">Letzter Kontakt</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {companies.map((c) => (
+                  <tr key={c.id} className="border-t border-brand-100 hover:bg-brand-50/50">
+                    <td className="px-4 py-3">
+                      <Link href={`/companies/${c.id}`} className="font-medium text-brand-900 hover:underline">
+                        {c.name}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-brand-700">{COMPANY_TYPE_LABELS[c.type]}</td>
+                    <td className="px-4 py-3">
+                      <StatusBadge status={c.status} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <PriorityBadge priority={c.priority} />
+                    </td>
+                    <td className="px-4 py-3 text-brand-700">{c.city ?? "—"}</td>
+                    <td className="px-4 py-3 text-brand-500">
+                      {formatRelative(c.effective_last_interaction_at)}
+                      {c.is_group &&
+                        c.effective_last_interaction_at !== c.last_interaction_at && (
+                          <span
+                            className="ml-1 text-xs text-brand-400"
+                            title="Spätester Kontakt über alle Standorte dieser Gruppe"
+                          >
+                            (Standort)
+                          </span>
+                        )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       ) : null}
     </div>
   );

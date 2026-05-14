@@ -60,8 +60,8 @@ export default async function ContactDetailPage({
         }
       />
 
-      <div className="grid grid-cols-3 gap-6">
-        <div className="col-span-2 space-y-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
           <section className="card p-6">
             <h2 className="mb-3 text-lg font-semibold text-brand-900">Verlauf</h2>
             <Timeline interactions={interactions} contacts={allCompanyContacts} />

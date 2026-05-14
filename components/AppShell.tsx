@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { NavDrawer } from "./NavDrawer";
 
 const navItems = [
   { href: "/", label: "Dashboard" },
@@ -19,7 +20,7 @@ export function AppShell({
 }) {
   return (
     <div className="flex min-h-screen">
-      <aside className="w-60 shrink-0 border-r border-brand-100 bg-white px-4 py-6">
+      <aside className="hidden w-60 shrink-0 border-r border-brand-100 bg-white px-4 py-6 lg:block">
         <Link href="/" className="mb-8 flex items-center gap-3">
           <Image
             src="/dragon.png"
@@ -47,11 +48,16 @@ export function AppShell({
           ))}
         </nav>
       </aside>
-      <div className="flex flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-brand-100 bg-white px-8 py-3">
-          <div className="text-xs text-brand-500">Eingeloggt als</div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex items-center justify-between border-b border-brand-100 bg-white px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <span className="text-sm text-brand-900">{email}</span>
+            <NavDrawer items={navItems} />
+            <div className="hidden text-xs text-brand-500 sm:block">
+              Eingeloggt als
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="truncate text-sm text-brand-900">{email}</span>
             <form action="/logout" method="post">
               <button
                 type="submit"
@@ -63,7 +69,7 @@ export function AppShell({
             </form>
           </div>
         </header>
-        <main className="flex-1 px-8 py-6">{children}</main>
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
       </div>
     </div>
   );
