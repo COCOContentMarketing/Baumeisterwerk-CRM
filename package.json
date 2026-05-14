@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "check:migrations": "node scripts/check-migration-grants.mjs",
     "db:push": "supabase db push",
     "db:reset": "supabase db reset"
   },
