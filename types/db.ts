@@ -41,6 +41,10 @@ export type Priority = "niedrig" | "mittel" | "hoch";
 
 export type ContactLanguage = "de" | "en";
 
+// Anrede-Form fuer KI-generierte Emails. Nur fuer deutschsprachige Kontakte
+// relevant; im Englischen gibt es keine Du/Sie-Unterscheidung.
+export type SalutationForm = "du" | "sie";
+
 export type InteractionType =
   | "email_sent"
   | "email_received"

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { draftEmail } from "@/lib/claude/email";
+import { deriveSalutationDefault } from "@/lib/db/salutation";
 import { isReplyClassification } from "@/types/classification";
 import {
   getContact,
@@ -12,6 +13,7 @@ import {
 const Body = z.object({
   interaction_id: z.string().uuid(),
   hint: z.string().max(2000).optional(),
+  salutation_form: z.enum(["du", "sie"]).optional(),
 });
 
 // Komfort-Route: bekommt eine Inbound-Interaktion und liefert einen
@@ -49,6 +51,8 @@ export async function POST(req: NextRequest) {
       : null;
 
     const useCase = classification ? intentToUseCase(classification.intent) : "inbound_reply";
+    // Anrede: explizite Wahl, sonst aus dem Verlauf ableiten.
+    const salutationForm = parsed.salutation_form ?? deriveSalutationDefault(history);
 
     const draft = await draftEmail({
       company: contact.company,
@@ -57,6 +61,7 @@ export async function POST(req: NextRequest) {
       hint: parsed.hint,
       signature: user?.signature ?? null,
       useCase,
+      salutationForm,
       replyContext: classification
         ? {
             inbound_subject: inbound.subject ?? "",

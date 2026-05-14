@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getContact, getCurrentUser, listInteractionsForContact } from "@/lib/db/queries";
+import { deriveSalutationDefault } from "@/lib/db/salutation";
 import { draftEmail } from "@/lib/claude/email";
 
 const Body = z.object({
@@ -8,6 +9,7 @@ const Body = z.object({
   hint: z.string().max(2000).optional(),
   use_case: z.string().optional(),
   template_name: z.string().optional(),
+  salutation_form: z.enum(["du", "sie"]).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -23,6 +25,8 @@ export async function POST(req: NextRequest) {
 
     // Use-Case automatisch aus Verlauf inferieren, falls nicht uebergeben.
     const useCase = parsed.use_case ?? inferUseCase(interactions);
+    // Anrede: explizite Wahl aus dem Composer, sonst aus dem Verlauf ableiten.
+    const salutationForm = parsed.salutation_form ?? deriveSalutationDefault(interactions);
 
     const draft = await draftEmail({
       company: contact.company,
@@ -32,6 +36,7 @@ export async function POST(req: NextRequest) {
       signature: user?.signature ?? null,
       useCase,
       templateName: parsed.template_name,
+      salutationForm,
     });
     return NextResponse.json(draft);
   } catch (e) {
