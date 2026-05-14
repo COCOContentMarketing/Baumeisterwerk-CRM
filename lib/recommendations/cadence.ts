@@ -85,7 +85,7 @@ export function evaluateContact(input: CadenceInput): PendingAction | null {
         kind: "follow_up",
         priority: "hoch",
         title: `Kurzes Danke nach Termin mit ${displayName(contact)}`,
-        reason: `Termin am ${shortDate(lastMeeting.occurred_at)}. Innerhalb von 48h kurz Danke + Bestaetigung der Naechsten Schritte.`,
+        reason: `Termin am ${shortDate(lastMeeting.occurred_at)}. Innerhalb von 48h kurz Danke + Bestätigung der nächsten Schritte.`,
         due_at: addDays(now, 0).toISOString(),
         template_use_case: "post_meeting_thanks",
       };
@@ -103,7 +103,7 @@ export function evaluateContact(input: CadenceInput): PendingAction | null {
         kind: "follow_up",
         priority: "hoch",
         title: `Substanzieller Follow-up zu Termin mit ${displayName(contact)}`,
-        reason: `Termin liegt ${ageDays} Tage zurueck, keine Reaktion seither. Konkretes Naechste-Schritte-Angebot machen.`,
+        reason: `Termin liegt ${ageDays} Tage zurück, keine Reaktion seither. Konkretes Nächste-Schritte-Angebot machen.`,
         due_at: now.toISOString(),
         template_use_case: "post_meeting_follow_up",
       };
@@ -162,7 +162,7 @@ export function evaluateContact(input: CadenceInput): PendingAction | null {
       }`,
       reason:
         company.notes?.includes("TOP-PRIORITÄT")
-          ? "Top-Prioritaet: zuerst kontaktieren."
+          ? "Top-Priorität: zuerst kontaktieren."
           : "Noch kein Kontakt aufgenommen.",
       due_at: now.toISOString(),
       template_use_case: defaultTemplateForCompany(company),
@@ -261,7 +261,7 @@ function inboundReplyAction(args: {
         kind: "email",
         priority: "hoch",
         title: `Interesse-Antwort an ${name}`,
-        reason: `${name} signalisiert Interesse (${inboundDate}). Naechster Schritt: ${classification.suggested_next_step}.`,
+        reason: `${name} signalisiert Interesse (${inboundDate}). Nächster Schritt: ${classification.suggested_next_step}.`,
         due_at: now.toISOString(),
         template_use_case: "inbound_reply_interest",
         inbound_reply_context: baseContext,
@@ -272,8 +272,8 @@ function inboundReplyAction(args: {
         company,
         kind: "email",
         priority: "hoch",
-        title: `Rueckfrage von ${name} beantworten`,
-        reason: `${name} hat am ${inboundDate} eine inhaltliche Rueckfrage gestellt.`,
+        title: `Rückfrage von ${name} beantworten`,
+        reason: `${name} hat am ${inboundDate} eine inhaltliche Rückfrage gestellt.`,
         due_at: now.toISOString(),
         template_use_case: "inbound_reply_rueckfrage",
         inbound_reply_context: baseContext,
@@ -313,7 +313,7 @@ function inboundReplyAction(args: {
         kind: "email",
         priority: "mittel",
         title: `Klarstellung mit ${name}`,
-        reason: `Antwort von ${name} (${inboundDate}) nicht eindeutig - kurze Rueckfrage anstossen.`,
+        reason: `Antwort von ${name} (${inboundDate}) nicht eindeutig - kurze Rückfrage anstoßen.`,
         due_at: now.toISOString(),
         template_use_case: "inbound_reply_unklar",
         inbound_reply_context: baseContext,

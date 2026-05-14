@@ -90,7 +90,18 @@ export default async function CompaniesPage({
                     <PriorityBadge priority={c.priority} />
                   </td>
                   <td className="px-4 py-3 text-brand-700">{c.city ?? "—"}</td>
-                  <td className="px-4 py-3 text-brand-500">{formatRelative(c.last_interaction_at)}</td>
+                  <td className="px-4 py-3 text-brand-500">
+                    {formatRelative(c.effective_last_interaction_at)}
+                    {c.is_group &&
+                      c.effective_last_interaction_at !== c.last_interaction_at && (
+                        <span
+                          className="ml-1 text-xs text-brand-400"
+                          title="Spätester Kontakt über alle Standorte dieser Gruppe"
+                        >
+                          (Standort)
+                        </span>
+                      )}
+                  </td>
                 </tr>
               ))}
             </tbody>

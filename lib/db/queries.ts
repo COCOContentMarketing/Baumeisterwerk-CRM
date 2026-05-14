@@ -2,6 +2,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import type {
   AppUser,
   Company,
+  CompanyWithRollup,
   Contact,
   ContactCompanyLink,
   Interaction,
@@ -44,11 +45,14 @@ export async function getCurrentUser(): Promise<AppUser | null> {
 
 export type CompanyView = "all" | "groups" | "leafs";
 
-export async function listCompanies(view: CompanyView = "all"): Promise<Company[]> {
+export async function listCompanies(view: CompanyView = "all"): Promise<CompanyWithRollup[]> {
   const sb = getSupabaseAdmin();
-  const { data, error } = await sb.from("companies").select("*");
+  // Liest aus der View companies_with_rollup (Migration 0011): liefert
+  // zusaetzlich effective_last_interaction_at, das fuer Dach-Companies das
+  // spaeteste last_interaction_at ueber alle Children-Standorte hochrollt.
+  const { data, error } = await sb.from("companies_with_rollup").select("*");
   if (error) throw error;
-  const list = (data ?? []) as Company[];
+  const list = (data ?? []) as CompanyWithRollup[];
   const filtered =
     view === "groups"
       ? list.filter((c) => c.is_group)
