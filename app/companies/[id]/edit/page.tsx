@@ -43,7 +43,7 @@ export default async function EditCompanyPage({ params }: { params: Promise<{ id
           <label className="label">Name</label>
           <input name="name" defaultValue={company.name} required className="input" />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="label">Typ</label>
             <select name="type" defaultValue={company.type} className="input">

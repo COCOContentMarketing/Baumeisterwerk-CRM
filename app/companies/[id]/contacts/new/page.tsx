@@ -26,7 +26,7 @@ export default async function NewContactPage({ params }: { params: Promise<{ id:
     <div className="max-w-2xl">
       <PageHeader title="Neue Kontaktperson" />
       <form action={action} className="card space-y-4 p-6">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="label">Vorname</label>
             <input name="first_name" className="input" autoFocus />

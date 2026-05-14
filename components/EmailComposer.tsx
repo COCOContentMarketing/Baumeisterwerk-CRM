@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { SalutationForm } from "@/types/db";
 
 export function EmailComposer({
   contactId,
@@ -24,11 +25,31 @@ export function EmailComposer({
   const [subject, setSubject] = useState(initialSubject);
   const [body, setBody] = useState(initialBody);
   const [hint, setHint] = useState("");
+  const [salutation, setSalutation] = useState<SalutationForm>("sie");
   const [generating, setGenerating] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [draftUrl, setDraftUrl] = useState<string | null>(null);
   const router = useRouter();
+
+  // Vorbelegung der Anrede aus dem Kontakt-Verlauf (Du nach Termin, sonst Sie).
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/contacts/${contactId}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (
+          !cancelled &&
+          (j?.salutation_default === "du" || j?.salutation_default === "sie")
+        ) {
+          setSalutation(j.salutation_default);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [contactId]);
 
   async function generate() {
     setError(null);
@@ -37,7 +58,11 @@ export function EmailComposer({
       const res = await fetch("/api/email/draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contact_id: contactId, hint }),
+        body: JSON.stringify({
+          contact_id: contactId,
+          hint,
+          salutation_form: salutation,
+        }),
       });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error ?? "Fehler");
@@ -76,7 +101,7 @@ export function EmailComposer({
   }
 
   return (
-    <div className="card space-y-3 p-6">
+    <div className="card space-y-3 p-4 sm:p-6">
       <div className="text-sm text-brand-500">
         An:{" "}
         {hasEmail ? (
@@ -108,6 +133,27 @@ export function EmailComposer({
         />
       </div>
 
+      <div>
+        <label className="label">Anrede</label>
+        <div className="inline-flex rounded-md border border-brand-200 p-0.5">
+          {(["du", "sie"] as const).map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setSalutation(f)}
+              aria-pressed={salutation === f}
+              className={`rounded px-3 py-1 text-sm font-medium transition ${
+                salutation === f
+                  ? "bg-brand-700 text-white"
+                  : "text-brand-700 hover:bg-brand-100"
+              }`}
+            >
+              {f === "du" ? "Du" : "Sie"}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <button onClick={generate} disabled={generating} className="btn-secondary">
         {generating ? "Generiere…" : "✨ Mit Claude entwerfen"}
       </button>
@@ -135,7 +181,7 @@ export function EmailComposer({
           </a>
         </div>
       ) : (
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           {onClose && (
             <button onClick={onClose} className="btn-ghost">
               Schließen

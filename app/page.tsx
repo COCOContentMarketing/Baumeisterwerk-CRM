@@ -78,7 +78,7 @@ export default async function DashboardPage({
       {!companiesRes.ok && <DbErrorBanner area="Unternehmen" message={companiesRes.error} />}
       {!recsRes.ok && <DbErrorBanner area="Empfehlungen" message={recsRes.error} />}
 
-      <div className="mb-8 grid grid-cols-4 gap-4">
+      <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
         <Stat label="Unternehmen" value={stats.total} />
         <Stat label="Leads" value={stats.leads} />
         <Stat label="In Gespräch" value={stats.inGespraech} />

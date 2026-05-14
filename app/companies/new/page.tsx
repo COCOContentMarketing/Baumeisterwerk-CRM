@@ -26,7 +26,7 @@ export default function NewCompanyPage() {
           <label className="label">Name</label>
           <input name="name" required className="input" autoFocus />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="label">Typ</label>
             <select name="type" className="input" defaultValue="interior_designer">

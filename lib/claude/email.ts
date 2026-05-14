@@ -1,8 +1,27 @@
 import { CLAUDE_MODEL, getClaude } from "./client";
 import { BAUMEISTERWERK_BACKGROUND } from "./prompts";
 import { findTemplate, findTemplateByName } from "@/lib/db/templates";
-import type { Company, Contact, Interaction } from "@/types/db";
+import type {
+  Company,
+  Contact,
+  ContactLanguage,
+  Interaction,
+  SalutationForm,
+} from "@/types/db";
 import { COMPANY_TYPE_LABELS } from "@/types/db";
+
+// Anrede-Anweisung fuer den Email-Prompt. Nur fuer deutschsprachige
+// Kontakte relevant - im Englischen gibt es keine Du/Sie-Unterscheidung,
+// daher liefert die Funktion dort einen leeren String.
+export function buildSalutationInstruction(
+  form: SalutationForm,
+  language: ContactLanguage,
+): string {
+  if (language !== "de") return "";
+  return form === "du"
+    ? 'Anrede: Duze den Ansprechpartner durchgehend (Du/Dich/Dein/Dir). Nutze eine lockere, persoenliche Anrede wie "Hallo <Vorname>".'
+    : 'Anrede: Sieze den Ansprechpartner durchgehend (Sie/Ihnen/Ihr). Nutze eine formelle Anrede wie "Guten Tag <Nachname>".';
+}
 
 export interface DraftedEmail {
   subject: string;
@@ -84,6 +103,8 @@ export async function draftEmail(args: {
   // Wenn der Entwurf eine Antwort auf eine eingegangene Mail ist, hier
   // den klassifizierten Reply-Kontext mitgeben. Wird strikt als DATA gekapselt.
   replyContext?: DraftEmailReplyContext;
+  // Anrede-Form (du/sie). Greift nur fuer deutschsprachige Kontakte.
+  salutationForm?: SalutationForm;
 }): Promise<DraftedEmail> {
   const claude = getClaude();
   const language = args.contact.language;
@@ -116,9 +137,16 @@ export async function draftEmail(args: {
       ? "\n\nVerwende durchgehend echte deutsche Umlaute (ä ö ü ß), niemals ASCII-Ersatzformen wie ae/oe/ue/ss."
       : "";
 
+  const salutationInstruction = args.salutationForm
+    ? buildSalutationInstruction(args.salutationForm, language)
+    : "";
+  const salutationRule = salutationInstruction
+    ? `\n\n${salutationInstruction}`
+    : "";
+
   const userInstruction = `Verfasse eine Email an den Ansprechpartner.
 
-Sprache: ${language === "de" ? "Deutsch" : "English"}
+Sprache: ${language === "de" ? "Deutsch" : "English"}${salutationRule}
 
 ${templateBlock}${replyBlock}
 
