@@ -98,6 +98,13 @@ export interface ContactCompanyLink {
   updated_at: string;
 }
 
+// Aus der SQL-View companies_with_rollup (Migration 0011): Company plus
+// effective_last_interaction_at, das fuer Dach-Companies das spaeteste
+// last_interaction_at ueber alle Children-Standorte hochrollt.
+export interface CompanyWithRollup extends Company {
+  effective_last_interaction_at: string | null;
+}
+
 export interface Contact {
   id: string;
   company_id: string;
