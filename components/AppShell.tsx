@@ -23,7 +23,7 @@ export function AppShell({
       <aside className="hidden w-60 shrink-0 border-r border-brand-100 bg-white px-4 py-6 lg:block">
         <Link href="/" className="mb-8 flex items-center gap-3">
           <Image
-            src="/dragon.png"
+            src="/logo-dragon.png"
             alt="Baumeisterwerk"
             width={32}
             height={32}
