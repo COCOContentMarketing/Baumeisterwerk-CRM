@@ -37,7 +37,7 @@ export function NavDrawer({ items }: { items: NavItem[] }) {
                 className="flex items-center gap-3"
               >
                 <Image
-                  src="/dragon.png"
+                  src="/logo-dragon.png"
                   alt="Baumeisterwerk"
                   width={32}
                   height={32}
